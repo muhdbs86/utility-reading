@@ -18,6 +18,7 @@
   padding: 0;
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 html, body {
@@ -30,12 +31,9 @@ html, body {
   -webkit-text-size-adjust: 100%;
 }
 
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  -webkit-tap-highlight-color: transparent;
+/* Prevent auto zoom-in on all mobile inputs across all tabs */
+input, select, textarea, .form-input, .modal-input, .modal-input-sm {
+  font-size: 16px !important; /* Mobile browsers auto-zoom if font-size < 16px */
   touch-action: manipulation;
 }
 
@@ -76,6 +74,7 @@ html, body {
   height: 28px;
   border-radius: 50%;
   border: 1px solid var(--primary);
+  object-fit: cover;
 }
 
 .btn-login, .btn-logout {
@@ -130,6 +129,7 @@ html, body {
   gap: 4px;
   white-space: nowrap;
   transition: all 0.2s;
+  touch-action: manipulation;
 }
 
 .tab-btn.active {
@@ -175,7 +175,7 @@ html, body {
   border-radius: 8px;
   padding: 8px 10px;
   color: white;
-  font-size: 0.85rem;
+  font-size: 16px !important; /* Prevents auto zoom-in on focus */
   outline: none;
   transition: border-color 0.2s;
 }
@@ -230,6 +230,7 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 6px;
+  touch-action: manipulation;
 }
 
 .btn-submit:hover {
@@ -292,6 +293,7 @@ html, body {
   padding: 2px;
   display: flex;
   align-items: center;
+  touch-action: manipulation;
 }
 
 /* Configure Provider Modal & Card Styling */
@@ -330,7 +332,7 @@ html, body {
   border-radius: 10px;
   padding: 9px 12px;
   color: #0f172a;
-  font-size: 0.85rem;
+  font-size: 16px !important; /* Prevents mobile zoom */
   font-weight: 600;
   outline: none;
   box-sizing: border-box;
@@ -347,7 +349,7 @@ html, body {
   border-radius: 8px;
   padding: 7px 8px;
   color: #0f172a;
-  font-size: 0.8rem;
+  font-size: 16px !important; /* Prevents mobile zoom */
   font-weight: 600;
   outline: none;
   box-sizing: border-box;
@@ -377,6 +379,7 @@ html, body {
   justify-content: center;
   gap: 4px;
   transition: all 0.2s;
+  touch-action: manipulation;
 }
 
 .type-chip.active-elec {
@@ -411,6 +414,7 @@ html, body {
   font-size: 0.78rem;
   border-radius: 8px;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .model-btn.active {
@@ -436,6 +440,7 @@ html, body {
   font-weight: 700;
   font-size: 0.82rem;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .modal-btn-save {
@@ -448,6 +453,7 @@ html, body {
   font-weight: 700;
   font-size: 0.82rem;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .provider-card-ui {
@@ -492,6 +498,7 @@ html, body {
   cursor: pointer;
   transition: all 0.2s;
   padding: 0;
+  touch-action: manipulation;
 }
 
 .btn-reorder:hover:not([disabled]) {
@@ -517,6 +524,7 @@ html, body {
   cursor: pointer;
   transition: all 0.2s;
   padding: 0;
+  touch-action: manipulation;
 }
 
 .btn-icon-action:hover {
@@ -632,6 +640,7 @@ html, body {
   cursor: pointer;
   transition: all 0.2s;
   box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  touch-action: manipulation;
 }
 
 .btn-google-signin:hover {
