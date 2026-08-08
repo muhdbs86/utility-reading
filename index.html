@@ -363,11 +363,11 @@
         <div class="grid-2">
           <div class="form-group">
             <label class="form-label">Previous Reading (m³)</label>
-            <input type="text" id="waterPrevInput" class="form-input" placeholder="0.0">
+            <input type="text" id="waterPrevInput" class="form-input" inputmode="numeric" placeholder="0.0000">
           </div>
           <div class="form-group">
             <label class="form-label">Current Reading (m³)</label>
-            <input type="text" id="waterCurrInput" class="form-input" placeholder="Auto 1-decimal">
+            <input type="text" id="waterCurrInput" class="form-input" inputmode="numeric" placeholder="Auto 4-decimal (amount style)">
           </div>
         </div>
 
@@ -409,11 +409,11 @@
         <div class="grid-2">
           <div class="form-group">
             <label class="form-label">Previous Reading (kWh)</label>
-            <input type="number" id="elecPrevInput" class="form-input" placeholder="0.0">
+            <input type="text" id="elecPrevInput" class="form-input" inputmode="numeric" placeholder="0.0000">
           </div>
           <div class="form-group">
             <label class="form-label">Current Reading (kWh)</label>
-            <input type="number" id="elecCurrInput" class="form-input" placeholder="0.0">
+            <input type="text" id="elecCurrInput" class="form-input" inputmode="numeric" placeholder="Auto 4-decimal (amount style)">
           </div>
         </div>
 
@@ -611,30 +611,39 @@
       document.getElementById('elecTariffLabel').innerText = `$${customRates.elec.tariff.toFixed(4)} / kWh`;
     }
 
-    // Auto-format water reading decimal placement (1 decimal place)
-    function formatWaterInput(val) {
+    // Auto-format meter reading with amount-style backwards decimal entry (e.g. 1423.6000)
+    function formatMeterInput(val, decimals = 4) {
       if (!val) return '';
-      if (val.includes('.')) {
-        const parts = val.split('.');
-        if (parts.length === 2 && parts[1].length >= 2) {
-          return `${parts[0].replace(/\D/g,'')}.${parts[1].replace(/\D/g,'')}`;
-        }
-      }
-      const digits = val.replace(/\D/g, '').replace(/^0+/, '') || '0';
-      if (digits.length === 1) {
-        return digits === '0' ? '0.0' : `0.${digits}`;
-      }
-      return `${digits.slice(0, -1)}.${digits.slice(-1)}`;
+      const rawDigits = val.replace(/\D/g, '');
+      if (!rawDigits) return '';
+      
+      const num = parseInt(rawDigits, 10);
+      const factor = Math.pow(10, decimals);
+      const intPart = Math.floor(num / factor).toString();
+      const decPart = (num % factor).toString().padStart(decimals, '0');
+      return `${intPart}.${decPart}`;
     }
 
-    // Attach Water input listener
+    // Attach Water & Electricity input listeners
     const waterCurrEl = document.getElementById('waterCurrInput');
     const waterPrevEl = document.getElementById('waterPrevInput');
-    
-    [waterCurrEl, waterPrevEl].forEach(el => {
+    const elecCurrEl = document.getElementById('elecCurrInput');
+    const elecPrevEl = document.getElementById('elecPrevInput');
+
+    [
+      { el: waterCurrEl, calc: calculateWaterEst },
+      { el: waterPrevEl, calc: calculateWaterEst },
+      { el: elecCurrEl, calc: calculateElecEst },
+      { el: elecPrevEl, calc: calculateElecEst }
+    ].forEach(({ el, calc }) => {
+      if (!el) return;
       el.addEventListener('input', (e) => {
-        el.value = formatWaterInput(e.target.value);
-        calculateWaterEst();
+        const formatted = formatMeterInput(e.target.value, 4);
+        el.value = formatted;
+        if (el.setSelectionRange) {
+          el.setSelectionRange(formatted.length, formatted.length);
+        }
+        calc();
       });
     });
 
@@ -666,14 +675,6 @@
       document.getElementById('waterTotalEst').innerText = `$${total.toFixed(2)}`;
       return { usage, total };
     }
-
-    // Electricity Estimate Calculator
-    const elecCurrEl = document.getElementById('elecCurrInput');
-    const elecPrevEl = document.getElementById('elecPrevInput');
-
-    [elecCurrEl, elecPrevEl].forEach(el => {
-      el.addEventListener('input', calculateElecEst);
-    });
 
     function calculateElecEst() {
       const prev = parseFloat(elecPrevEl.value) || 0;
