@@ -944,8 +944,24 @@
     };
 
     // Firebase Init & Auth
-    const savedConfig = localStorage.getItem('firebase_web_config');
-    const activeConfig = savedConfig ? JSON.parse(savedConfig) : defaultFirebaseConfig;
+    let activeConfig = defaultFirebaseConfig;
+    try {
+      const savedConfig = localStorage.getItem('firebase_web_config');
+      if (savedConfig) {
+        const parsed = JSON.parse(savedConfig);
+        if (parsed && parsed.apiKey) {
+          activeConfig = parsed;
+        }
+      }
+    } catch (e) {
+      localStorage.removeItem('firebase_web_config');
+    }
+
+    const configTextarea = document.getElementById('firebaseConfigText');
+    if (configTextarea) {
+      configTextarea.value = JSON.stringify(activeConfig, null, 2);
+    }
+
     initFirebase(activeConfig);
 
     const savedSyncUrl = localStorage.getItem('utility_sync_url') || defaultFirebaseConfig.databaseURL;
@@ -980,22 +996,33 @@
             renderHistory();
           }
         });
+        return true;
       } catch (err) {
         console.error('Firebase init error:', err);
+        return false;
       }
     }
 
     document.getElementById('btnLoginBtn').addEventListener('click', async () => {
       if (!auth) {
-        document.getElementById('configModal').classList.remove('hidden');
-        return;
+        const success = initFirebase(activeConfig);
+        if (!success || !auth) {
+          if (configTextarea) configTextarea.value = JSON.stringify(activeConfig, null, 2);
+          document.getElementById('configModal').classList.remove('hidden');
+          return;
+        }
       }
       try {
         const { GoogleAuthProvider, signInWithPopup } = window.FirebaseSDK;
         const provider = new GoogleAuthProvider();
         await signInWithPopup(auth, provider);
       } catch (e) {
-        alert('Login failed: ' + e.message);
+        if (e.message && e.message.includes('auth/invalid-api-key')) {
+          if (configTextarea) configTextarea.value = JSON.stringify(activeConfig, null, 2);
+          document.getElementById('configModal').classList.remove('hidden');
+        } else {
+          alert('Sign in note: ' + e.message);
+        }
       }
     });
 
@@ -1014,12 +1041,17 @@
       const text = document.getElementById('firebaseConfigText').value.trim();
       try {
         const config = JSON.parse(text);
+        if (!config.apiKey || !config.projectId) {
+          alert('Invalid Firebase configuration format. Must contain at least apiKey and projectId.');
+          return;
+        }
         localStorage.setItem('firebase_web_config', JSON.stringify(config));
+        activeConfig = config;
         document.getElementById('configModal').classList.add('hidden');
         initFirebase(config);
         alert('Firebase web configuration saved successfully!');
       } catch (e) {
-        alert('Invalid JSON configuration.');
+        alert('Invalid JSON configuration syntax.');
       }
     });
 
