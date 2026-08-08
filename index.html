@@ -264,21 +264,35 @@
       </div>
     </div>
 
-    <!-- History & 2-Way Sync Screen -->
+    <!-- History & Cycle Monitor Screen -->
     <div id="sectionHistory" class="tab-section hidden">
       <div id="syncStatusBanner" style="margin-bottom: 12px; padding: 10px 14px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 12px; font-size: 0.78rem;">
         <span style="color:#e2e8f0;">Sign in with Google to enable real-time cloud sync across devices.</span>
       </div>
 
-      <div class="card">
-        <div class="card-title">📜 Saved Readings History</div>
-        <div id="historyList">
-          <p style="text-align:center; color:var(--text-muted); padding:16px; font-size:0.8rem;">No saved readings found.</p>
-        </div>
-      </div>
+      <!-- Rendered Current Cycle Monitor & Past Calculations Cards -->
+      <div id="historyList"></div>
     </div>
 
   </main>
+
+  <!-- Detailed Bills & Logs Breakdown Modal -->
+  <div id="breakdownModal" class="modal-overlay hidden">
+    <div class="modal-breakdown-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <button type="button" onclick="window.closeBreakdownModal()" style="background:none; border:none; color:#0f172a; cursor:pointer; display:flex; align-items:center; gap:4px; font-weight:700;">
+          <span class="material-icons-round" style="font-size:22px;">arrow_back</span>
+        </button>
+        <div style="text-align:center;">
+          <strong id="breakdownTitle" style="font-size:0.95rem; font-weight:800; color:#0f172a; display:block;">JULY 2026</strong>
+          <span style="font-size:0.68rem; color:#64748b; font-weight:600;">Detailed bills & logs breakdown</span>
+        </div>
+        <div style="width:28px;"></div>
+      </div>
+
+      <div id="breakdownContent"></div>
+    </div>
+  </div>
 
   <!-- Firebase Setup Modal -->
   <div id="configModal" class="modal-overlay hidden">

@@ -3,12 +3,11 @@ let auth = null;
 let currentUser = null;
 let userReadings = [];
 
-// Prevent double-tap and gesture zoom on mobile devices (iOS Safari & Chrome)
+// Prevent double-tap and gesture zoom on mobile devices
 let lastTouchEnd = 0;
 document.addEventListener('touchend', (event) => {
   const now = Date.now();
   if (now - lastTouchEnd <= 300) {
-    // Only prevent zoom if the touch target is not a form input or textarea
     if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName)) {
       event.preventDefault();
     }
@@ -32,12 +31,12 @@ function getActiveProvider(type) {
   const fallback = providersList.find(p => p.type === type);
   if (fallback) return fallback;
   if (type === 'WATER') {
-    return { name: 'No Provider Set', model: 'SG_TIERED', t1Tariff: 0, t1Wct: 0, t1Wbf: 0, t2Tariff: 0, t2Wct: 0, t2Wbf: 0, flatRate: 0, gst: 0 };
+    return { name: 'PUB Water', model: 'SG_TIERED', t1Tariff: 1.21, t1Wct: 0.72, t1Wbf: 1.09, t2Tariff: 1.81, t2Wct: 1.18, t2Wbf: 1.40, flatRate: 1.20, gst: 9.0 };
   }
   if (type === 'ELECTRICITY') {
-    return { name: 'No Provider Set', tariff: 0, gst: 0 };
+    return { name: 'SP Group', tariff: 0.2324, gst: 9.0 };
   }
-  return { name: 'No Provider Set', fee: 0, gst: 0 };
+  return { name: 'Refuse Fee', fee: 9.76, gst: 9.0 };
 }
 
 // Helper: Default start of cycle date calculation
@@ -57,6 +56,37 @@ function getDefaultCycleStartDate(type = 'WATER') {
   const mm = String(month + 1).padStart(2, '0');
   const dd = String(cycleDay).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
+}
+
+function getReadingCycleInfo(dateMs, cycleDay = 28) {
+  const dt = new Date(dateMs || Date.now());
+  let year = dt.getFullYear();
+  let month = dt.getMonth(); // 0-indexed
+  
+  if (dt.getDate() < cycleDay) {
+    month -= 1;
+    if (month < 0) {
+      month = 11;
+      year -= 1;
+    }
+  }
+  
+  const cycleDate = new Date(year, month, 1);
+  const monthName = cycleDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  
+  const startDate = new Date(year, month, cycleDay);
+  let endMonth = month + 1;
+  let endYear = year;
+  if (endMonth > 11) {
+    endMonth = 0;
+    endYear += 1;
+  }
+  const endDate = new Date(endYear, endMonth, cycleDay - 1);
+  
+  const formatShort = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const rangeStr = `${formatShort(startDate)} - ${formatShort(endDate)}`;
+  
+  return { monthName, year, month, rangeStr };
 }
 
 function updateCycleLabels() {
@@ -120,7 +150,7 @@ function saveProvidersState() {
   calculateElecEst();
 }
 
-// Fixed Provider Reordering Logic (Category-isolated replacement)
+// Fixed Provider Reordering Logic (Category-isolated element replacement)
 window.moveProviderUp = function(id) {
   const item = providersList.find(x => x.id === id);
   if (!item) return;
@@ -604,6 +634,7 @@ if (btnElecMinus) btnElecMinus.addEventListener('click', () => {
   localStorage.setItem('utility_elec_cycle_start_day', elecCycleStartDay.toString());
   updateCycleLabels();
   syncCycleToFirebase();
+  renderHistory();
 });
 
 const btnElecPlus = document.getElementById('btnElecCyclePlus');
@@ -612,6 +643,7 @@ if (btnElecPlus) btnElecPlus.addEventListener('click', () => {
   localStorage.setItem('utility_elec_cycle_start_day', elecCycleStartDay.toString());
   updateCycleLabels();
   syncCycleToFirebase();
+  renderHistory();
 });
 
 const btnWaterMinus = document.getElementById('btnWaterCycleMinus');
@@ -620,6 +652,7 @@ if (btnWaterMinus) btnWaterMinus.addEventListener('click', () => {
   localStorage.setItem('utility_water_cycle_start_day', waterCycleStartDay.toString());
   updateCycleLabels();
   syncCycleToFirebase();
+  renderHistory();
 });
 
 const btnWaterPlus = document.getElementById('btnWaterCyclePlus');
@@ -628,6 +661,7 @@ if (btnWaterPlus) btnWaterPlus.addEventListener('click', () => {
   localStorage.setItem('utility_water_cycle_start_day', waterCycleStartDay.toString());
   updateCycleLabels();
   syncCycleToFirebase();
+  renderHistory();
 });
 
 // Tab Navigation
@@ -751,59 +785,342 @@ async function saveAndSyncReading(item) {
   }
 
   await syncReadingsToFirebase();
+  renderHistory();
 }
 
+// Modal state for Detailed Breakdown
+let activeBreakdownGroupKey = null;
+
+// RENDER NEW HISTORY SCREEN (Matching User Screenshots)
 function renderHistory() {
   const historyList = document.getElementById('historyList');
   if (!historyList) return;
-  if (userReadings.length === 0) {
-    historyList.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:16px; font-size:0.78rem;">No saved readings found.</p>`;
-    return;
+
+  const refuseP = getActiveProvider('REFUSE');
+  const refuseFee = (refuseP.fee || 9.76) * (1 + ((refuseP.gst || 9.0) / 100));
+
+  // Current Active Cycle Info
+  const currentCycleInfo = getReadingCycleInfo(Date.now(), waterCycleStartDay);
+  
+  // Group readings by Billing Cycle Period
+  const cycleGroups = {};
+  
+  userReadings.forEach(item => {
+    const itemDate = item.readingDate || item.timestamp || Date.now();
+    const cycleInfo = getReadingCycleInfo(itemDate, item.type === 'ELECTRICITY' ? elecCycleStartDay : waterCycleStartDay);
+    const key = cycleInfo.monthName;
+    
+    if (!cycleGroups[key]) {
+      cycleGroups[key] = {
+        key: key,
+        rangeStr: cycleInfo.rangeStr,
+        year: cycleInfo.year,
+        month: cycleInfo.month,
+        elec: [],
+        water: []
+      };
+    }
+    
+    if (item.type === 'ELECTRICITY') {
+      cycleGroups[key].elec.push(item);
+    } else if (item.type === 'WATER') {
+      cycleGroups[key].water.push(item);
+    }
+  });
+
+  // Ensure current cycle exists in cycleGroups
+  if (!cycleGroups[currentCycleInfo.monthName]) {
+    cycleGroups[currentCycleInfo.monthName] = {
+      key: currentCycleInfo.monthName,
+      rangeStr: currentCycleInfo.rangeStr,
+      year: currentCycleInfo.year,
+      month: currentCycleInfo.month,
+      elec: [],
+      water: []
+    };
   }
 
-  const sortedReadings = [...userReadings].sort((a, b) => (b.readingDate || b.timestamp || 0) - (a.readingDate || a.timestamp || 0));
+  // Calculate current cycle metrics
+  const currGroup = cycleGroups[currentCycleInfo.monthName];
+  const currElecTotal = currGroup.elec.reduce((s, x) => s + (x.totalAmount || 0), 0);
+  const currWaterTotal = currGroup.water.reduce((s, x) => s + (x.totalAmount || 0), 0);
+  const currCycleGrandTotal = currElecTotal + currWaterTotal + refuseFee;
 
-  historyList.innerHTML = sortedReadings.map((item) => {
-    const originalIndex = userReadings.indexOf(item);
-    const readingVal = item.currentReading || item.reading || 0;
-    const prevVal = item.previousReading || 0;
-    const dateStr = new Date(item.readingDate || item.timestamp || Date.now()).toLocaleDateString('en-SG', { year: 'numeric', month: 'short', day: 'numeric' });
-    const cycleStr = item.cycleStartDate ? ` (Cycle: ${item.cycleStartDate})` : '';
-    
-    return `
-      <div class="history-item" style="padding:12px; margin-bottom:8px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:12px; display:flex; justify-content:space-between; align-items:center;">
-        <div class="history-info">
-          <div style="font-weight:700; font-size:0.82rem; color:var(--text-main); display:flex; align-items:center; gap:6px;">
-            ${item.type === 'WATER' ? '<span style="color:#38bdf8;">💧 Water</span>' : '<span style="color:#f59e0b;">⚡ Electricity</span>'} 
-            <span style="font-weight:600; color:#e2e8f0;">- ${(item.usage || 0).toFixed(1)} ${item.type === 'WATER' ? 'm³' : 'kWh'}</span>
-          </div>
-          <div style="color:var(--text-muted); font-size:0.72rem; margin-top:2px;">
-            ${dateStr}${cycleStr} • ${prevVal} ➔ ${readingVal}
-          </div>
-          <div style="color:#64748b; font-size:0.7rem; margin-top:1px;">
-            Provider: ${item.providerName || 'Default'}
-          </div>
+  // Build Top Current Cycle Monitor Card
+  let html = `
+    <!-- Top Current Cycle Monitor Banner -->
+    <div class="current-cycle-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <span style="font-weight:800; font-size:0.92rem; color:#0f172a;">Current Cycle Monitor</span>
+        <span style="font-weight:700; font-size:0.78rem; color:#64748b;">${currentCycleInfo.monthName}</span>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px; text-align:center;">
+        <div class="cycle-metric-box">
+          <div style="color:#ef4444; font-size:0.75rem; font-weight:700;">⚡ Electricity</div>
+          <div style="font-size:0.95rem; font-weight:800; color:#ef4444; margin-top:2px;">S$${currElecTotal.toFixed(2)}</div>
         </div>
-        <div style="display:flex; align-items:center; gap:10px;">
-          <span style="font-weight:800; font-size:0.88rem; color:#10b981;">S$${(item.totalAmount || item.calculatedBill || 0).toFixed(2)}</span>
-          <button class="btn-delete" onclick="window.deleteItem(${originalIndex})" title="Delete Reading">
-            <span class="material-icons-round" style="font-size:18px;">delete</span>
-          </button>
+        <div class="cycle-metric-box">
+          <div style="color:#0284c7; font-size:0.75rem; font-weight:700;">💧 Water</div>
+          <div style="font-size:0.95rem; font-weight:800; color:#0284c7; margin-top:2px;">S$${currWaterTotal.toFixed(2)}</div>
+        </div>
+        <div class="cycle-metric-box">
+          <div style="color:#64748b; font-size:0.75rem; font-weight:700;">🗑️ Refuse</div>
+          <div style="font-size:0.95rem; font-weight:800; color:#64748b; margin-top:2px;">S$${refuseFee.toFixed(2)}</div>
         </div>
       </div>
-    `;
-  }).join('');
+
+      <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #cbd5e1; padding-top:10px;">
+        <span style="font-weight:700; font-size:0.85rem; color:#0f172a;">Estimated Cycle Total</span>
+        <span style="font-weight:800; font-size:1.18rem; color:#0f172a;">S$${currCycleGrandTotal.toFixed(2)}</span>
+      </div>
+    </div>
+
+    <!-- Past Calculations History Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin:16px 0 10px 0;">
+      <h3 style="font-size:0.92rem; font-weight:800; color:#f8fafc;">Past Calculations History</h3>
+      <span class="badge-cycle-info">Grouped: Cycle (⚡ ${elecCycleStartDay}th | 💧 ${waterCycleStartDay}th)</span>
+    </div>
+  `;
+
+  // Sort groups descending by date
+  const sortedKeys = Object.keys(cycleGroups).sort((a, b) => {
+    return (cycleGroups[b].year * 12 + cycleGroups[b].month) - (cycleGroups[a].year * 12 + cycleGroups[a].month);
+  });
+
+  if (sortedKeys.length === 0) {
+    html += `<p style="text-align:center; color:var(--text-muted); padding:16px; font-size:0.8rem;">No saved calculation logs found.</p>`;
+  } else {
+    html += sortedKeys.map(key => {
+      const g = cycleGroups[key];
+      const elecTotal = g.elec.reduce((s, x) => s + (x.totalAmount || 0), 0);
+      const elecUsage = g.elec.reduce((s, x) => s + (x.usage || 0), 0);
+      
+      const waterTotal = g.water.reduce((s, x) => s + (x.totalAmount || 0), 0);
+      const waterUsage = g.water.reduce((s, x) => s + (x.usage || 0), 0);
+      
+      const periodGrandTotal = elecTotal + waterTotal + refuseFee;
+
+      return `
+        <div class="history-period-card">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="material-icons-round" style="color:#0f172a; font-size:22px;">format_list_bulleted</span>
+              <div>
+                <strong style="font-size:0.98rem; font-weight:800; color:#0f172a; display:block; line-height:1.2;">${g.key}</strong>
+                <span style="font-size:0.7rem; color:#64748b; font-weight:600;">Billing Cycle Period</span>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <span style="font-size:0.68rem; color:#64748b; font-weight:700; display:block;">Total Period Bill</span>
+              <strong style="font-size:1.05rem; font-weight:800; color:#0f172a;">S$${periodGrandTotal.toFixed(2)}</strong>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+            <!-- Electricity Sub Card -->
+            <div class="history-subcard-elec">
+              <div style="font-weight:700; font-size:0.76rem; color:#dc2626; display:flex; align-items:center; gap:4px;">⚡ Electricity</div>
+              <div style="font-weight:800; font-size:0.92rem; color:#dc2626; margin:4px 0 2px 0;">S$${elecTotal.toFixed(4)}</div>
+              <div style="font-size:0.72rem; color:#0f172a; font-weight:700;">${elecUsage.toFixed(1)} kWh</div>
+              <div style="font-size:0.68rem; color:#94a3b8; margin-top:2px;">${g.elec.length} entries</div>
+            </div>
+
+            <!-- Water Sub Card -->
+            <div class="history-subcard-water">
+              <div style="font-weight:700; font-size:0.76rem; color:#0284c7; display:flex; align-items:center; gap:4px;">💧 Water</div>
+              <div style="font-weight:800; font-size:0.92rem; color:#0284c7; margin:4px 0 2px 0;">S$${waterTotal.toFixed(4)}</div>
+              <div style="font-size:0.72rem; color:#0f172a; font-weight:700;">${waterUsage.toFixed(4)} m³</div>
+              <div style="font-size:0.68rem; color:#94a3b8; margin-top:2px;">${g.water.length} entries</div>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-top:1px solid #f1f5f9; margin-bottom:8px;">
+            <span style="font-size:0.76rem; font-weight:700; color:#475569; display:flex; align-items:center; gap:6px;">
+              🗑️ Refuse Collection Fee
+            </span>
+            <strong style="font-size:0.82rem; font-weight:800; color:#475569;">S$${refuseFee.toFixed(2)}</strong>
+          </div>
+
+          <button type="button" class="btn-see-history" onclick="window.openBreakdownModal('${g.key}')">
+            ➔ See History
+          </button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  historyList.innerHTML = html;
 }
 
-window.deleteItem = async (index) => {
-  if (!confirm('Delete this reading?')) return;
-  userReadings.splice(index, 1);
+// Open Detailed Breakdown Modal
+window.openBreakdownModal = function(groupKey) {
+  activeBreakdownGroupKey = groupKey;
+  renderBreakdownModalContent();
+  const modal = document.getElementById('breakdownModal');
+  if (modal) modal.classList.remove('hidden');
+};
+
+function renderBreakdownModalContent() {
+  if (!activeBreakdownGroupKey) return;
+
+  const refuseP = getActiveProvider('REFUSE');
+  const refuseFee = (refuseP.fee || 9.76) * (1 + ((refuseP.gst || 9.0) / 100));
+
+  const items = userReadings.filter(item => {
+    const itemDate = item.readingDate || item.timestamp || Date.now();
+    const cycleInfo = getReadingCycleInfo(itemDate, item.type === 'ELECTRICITY' ? elecCycleStartDay : waterCycleStartDay);
+    return cycleInfo.monthName === activeBreakdownGroupKey;
+  });
+
+  const elecItems = items.filter(x => x.type === 'ELECTRICITY');
+  const waterItems = items.filter(x => x.type === 'WATER');
+
+  const elecTotal = elecItems.reduce((s, x) => s + (x.totalAmount || 0), 0);
+  const elecUsage = elecItems.reduce((s, x) => s + (x.usage || 0), 0);
+  const waterTotal = waterItems.reduce((s, x) => s + (x.totalAmount || 0), 0);
+  const waterUsage = waterItems.reduce((s, x) => s + (x.usage || 0), 0);
+
+  const grandTotal = elecTotal + waterTotal + refuseFee;
+
+  const cycleInfo = getReadingCycleInfo(Date.now(), waterCycleStartDay);
+
+  const titleEl = document.getElementById('breakdownTitle');
+  if (titleEl) titleEl.innerText = activeBreakdownGroupKey.toUpperCase();
+
+  const container = document.getElementById('breakdownContent');
+  if (!container) return;
+
+  const activeElecP = getActiveProvider('ELECTRICITY');
+  const activeWaterP = getActiveProvider('WATER');
+
+  container.innerHTML = `
+    <!-- Combined Grand Total Banner -->
+    <div style="background:#ffffff; border-radius:16px; padding:14px 16px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+      <div>
+        <span style="font-size:0.72rem; color:#64748b; font-weight:700; display:block;">Combined Grand Total</span>
+        <strong style="font-size:1.35rem; font-weight:800; color:#0f172a;">S$${grandTotal.toFixed(2)}</strong>
+      </div>
+      <span class="material-icons-round" style="color:#10b981; font-size:32px;">check_circle</span>
+    </div>
+
+    <!-- Electricity Details Card -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:0.82rem; font-weight:800; color:#ef4444; margin-bottom:6px; display:flex; align-items:center; gap:4px;">
+        ⚡ Electricity Details
+      </div>
+      <div style="background:#ffffff; border-radius:16px; padding:12px 14px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div style="background:#fef2f2; color:#ef4444; width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:800;">⚡</div>
+            <div>
+              <strong style="font-size:0.82rem; font-weight:800; color:#ef4444; display:block;">Electricity Compiled</strong>
+              <span style="font-size:0.68rem; color:#64748b; font-weight:600;">${cycleInfo.rangeStr}</span>
+            </div>
+          </div>
+          <span style="background:#fef2f2; color:#ef4444; font-size:0.68rem; font-weight:800; padding:3px 8px; border-radius:10px;">${elecItems.length} entries</span>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; font-size:0.74rem; color:#64748b; padding:6px 0; border-top:1px solid #f1f5f9;">
+          <span>Providers: <strong style="color:#0f172a;">${elecItems[0]?.providerName || activeElecP.name}</strong></span>
+          <span>Total Usage: <strong style="color:#0f172a;">${elecUsage.toFixed(1)} kWh</strong></span>
+          <span>Est. Bill: <strong style="color:#ef4444;">S$${elecTotal.toFixed(4)}</strong></span>
+        </div>
+
+        <!-- Logs Breakdown -->
+        <div style="margin-top:8px; border-top:1px dashed #e2e8f0; padding-top:6px;">
+          ${elecItems.length === 0 ? '<p style="font-size:0.72rem; color:#94a3b8; font-style:italic;">No electricity entries.</p>' : elecItems.map(item => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:0.74rem;">
+              <div>
+                <span style="color:#0f172a; font-weight:700;">${new Date(item.readingDate || item.timestamp).toLocaleDateString()}</span>
+                <span style="color:#64748b; margin-left:6px;">(${item.previousReading} ➔ ${item.currentReading})</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <strong style="color:#ef4444;">S$${(item.totalAmount || 0).toFixed(2)}</strong>
+                <button type="button" onclick="window.deleteReadingItem('${item.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:2px;">
+                  <span class="material-icons-round" style="font-size:16px;">delete</span>
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- Water Details Card -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:0.82rem; font-weight:800; color:#0284c7; margin-bottom:6px; display:flex; align-items:center; gap:4px;">
+        💧 Water Details
+      </div>
+      <div style="background:#ffffff; border-radius:16px; padding:12px 14px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div style="background:#f0f9ff; color:#0284c7; width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:800;">💧</div>
+            <div>
+              <strong style="font-size:0.82rem; font-weight:800; color:#0284c7; display:block;">Water Compiled</strong>
+              <span style="font-size:0.68rem; color:#64748b; font-weight:600;">${cycleInfo.rangeStr}</span>
+            </div>
+          </div>
+          <span style="background:#f0f9ff; color:#0284c7; font-size:0.68rem; font-weight:800; padding:3px 8px; border-radius:10px;">${waterItems.length} entries</span>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; font-size:0.74rem; color:#64748b; padding:6px 0; border-top:1px solid #f1f5f9;">
+          <span>Providers: <strong style="color:#0f172a;">${waterItems[0]?.providerName || activeWaterP.name}</strong></span>
+          <span>Total Usage: <strong style="color:#0f172a;">${waterUsage.toFixed(4)} m³</strong></span>
+          <span>Est. Bill: <strong style="color:#0284c7;">S$${waterTotal.toFixed(4)}</strong></span>
+        </div>
+
+        <!-- Logs Breakdown -->
+        <div style="margin-top:8px; border-top:1px dashed #e2e8f0; padding-top:6px;">
+          ${waterItems.length === 0 ? '<p style="font-size:0.72rem; color:#94a3b8; font-style:italic;">No water entries.</p>' : waterItems.map(item => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:0.74rem;">
+              <div>
+                <span style="color:#0f172a; font-weight:700;">${new Date(item.readingDate || item.timestamp).toLocaleDateString()}</span>
+                <span style="color:#64748b; margin-left:6px;">(${item.previousReading} ➔ ${item.currentReading})</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <strong style="color:#0284c7;">S$${(item.totalAmount || 0).toFixed(2)}</strong>
+                <button type="button" onclick="window.deleteReadingItem('${item.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:2px;">
+                  <span class="material-icons-round" style="font-size:16px;">delete</span>
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- Refuse Details Card -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:0.82rem; font-weight:800; color:#475569; margin-bottom:6px; display:flex; align-items:center; gap:4px;">
+        🗑️ Refuse Collection Details
+      </div>
+      <div style="background:#ffffff; border-radius:16px; padding:12px 14px; box-shadow:0 2px 8px rgba(0,0,0,0.1); display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <strong style="font-size:0.82rem; font-weight:800; color:#0f172a; display:block;">Monthly Flat Charge</strong>
+          <span style="font-size:0.68rem; color:#64748b;">Calculated based on active refuse provider rates</span>
+        </div>
+        <strong style="font-size:0.95rem; font-weight:800; color:#0f172a;">S$${refuseFee.toFixed(2)}</strong>
+      </div>
+    </div>
+  `;
+}
+
+window.deleteReadingItem = async function(id) {
+  if (!confirm('Delete this reading entry?')) return;
+  userReadings = userReadings.filter(x => x.id !== id);
   localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
   if (currentUser) {
     localStorage.setItem(`utility_readings_${currentUser.uid}`, JSON.stringify(userReadings));
   }
-  syncReadingsToFirebase();
+  await syncReadingsToFirebase();
   renderHistory();
+  renderBreakdownModalContent();
+};
+
+window.closeBreakdownModal = function() {
+  const modal = document.getElementById('breakdownModal');
+  if (modal) modal.classList.add('hidden');
 };
 
 // Default Firebase Config

@@ -177,7 +177,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   border-radius: 8px;
   padding: 8px 10px;
   color: white;
-  font-size: 16px !important; /* Prevents auto zoom-in on focus */
+  font-size: 16px !important;
   outline: none;
   transition: border-color 0.2s;
 }
@@ -263,39 +263,90 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   padding: 16px;
 }
 
-.cycle-card {
-  background: #0f172a;
-  border: 1px solid var(--card-border);
-  border-radius: 10px;
+/* History Screen Cards & Breakdown Modal (Matching User Screenshots) */
+.current-cycle-card {
+  background: #f8fafc;
+  color: #0f172a;
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  margin-bottom: 14px;
+}
+
+.cycle-metric-box {
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  padding: 8px 4px;
+}
+
+.badge-cycle-info {
+  background: #f3e8ff;
+  color: #7e22ce;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 14px;
+  display: inline-block;
+}
+
+.history-period-card {
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 20px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+  border: 1px solid #e2e8f0;
+}
+
+.history-subcard-elec {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 14px;
   padding: 10px;
-  margin-bottom: 10px;
 }
 
-.history-item {
+.history-subcard-water {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 14px;
+  padding: 10px;
+}
+
+.btn-see-history {
+  background: #f8fafc;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 10px;
+  font-weight: 800;
+  font-size: 0.82rem;
+  width: 100%;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 6px 0;
-  border-bottom: 1px dashed rgba(255,255,255,0.08);
-}
-
-.history-item:last-child {
-  border-bottom: none;
-}
-
-.history-info {
-  font-size: 0.75rem;
-}
-
-.btn-delete {
-  background: transparent;
-  border: none;
-  color: var(--danger);
+  justify-content: center;
+  gap: 6px;
   cursor: pointer;
-  padding: 2px;
-  display: flex;
-  align-items: center;
+  transition: all 0.2s;
   touch-action: manipulation !important;
+}
+
+.btn-see-history:hover {
+  background: #f1f5f9;
+}
+
+/* Modal Detailed Breakdown Card */
+.modal-breakdown-card {
+  background: #f8fafc;
+  color: #0f172a;
+  border-radius: 24px;
+  padding: 18px;
+  width: 100%;
+  max-width: 440px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
 
 /* Configure Provider Modal & Card Styling */
@@ -334,7 +385,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   border-radius: 10px;
   padding: 9px 12px;
   color: #0f172a;
-  font-size: 16px !important; /* Prevents mobile zoom */
+  font-size: 16px !important;
   font-weight: 600;
   outline: none;
   box-sizing: border-box;
@@ -351,7 +402,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   border-radius: 8px;
   padding: 7px 8px;
   color: #0f172a;
-  font-size: 16px !important; /* Prevents mobile zoom */
+  font-size: 16px !important;
   font-weight: 600;
   outline: none;
   box-sizing: border-box;
