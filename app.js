@@ -3,6 +3,23 @@ let auth = null;
 let currentUser = null;
 let userReadings = [];
 
+// Prevent double-tap and gesture zoom on mobile devices (iOS Safari & Chrome)
+let lastTouchEnd = 0;
+document.addEventListener('touchend', (event) => {
+  const now = Date.now();
+  if (now - lastTouchEnd <= 300) {
+    // Only prevent zoom if the touch target is not a form input or textarea
+    if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName)) {
+      event.preventDefault();
+    }
+  }
+  lastTouchEnd = now;
+}, { passive: false });
+
+document.addEventListener('gesturestart', (e) => {
+  e.preventDefault();
+});
+
 // Providers List State
 let providersList = JSON.parse(localStorage.getItem('utility_providers')) || [];
 
@@ -103,45 +120,51 @@ function saveProvidersState() {
   calculateElecEst();
 }
 
-// Fixed Provider Reordering Logic (Swaps items directly in providersList)
+// Fixed Provider Reordering Logic (Category-isolated replacement)
 window.moveProviderUp = function(id) {
-  const currIdx = providersList.findIndex(x => x.id === id);
-  if (currIdx <= 0) return;
-  const targetType = providersList[currIdx].type;
+  const item = providersList.find(x => x.id === id);
+  if (!item) return;
+  const targetType = item.type;
+  const sameType = providersList.filter(p => p.type === targetType);
+  const idx = sameType.findIndex(x => x.id === id);
+  
+  if (idx > 0) {
+    const temp = sameType[idx];
+    sameType[idx] = sameType[idx - 1];
+    sameType[idx - 1] = temp;
 
-  let prevIdx = -1;
-  for (let i = currIdx - 1; i >= 0; i--) {
-    if (providersList[i].type === targetType) {
-      prevIdx = i;
-      break;
-    }
-  }
+    let stIdx = 0;
+    providersList = providersList.map(p => {
+      if (p.type === targetType) {
+        return sameType[stIdx++];
+      }
+      return p;
+    });
 
-  if (prevIdx !== -1) {
-    const temp = providersList[currIdx];
-    providersList[currIdx] = providersList[prevIdx];
-    providersList[prevIdx] = temp;
     saveProvidersState();
   }
 };
 
 window.moveProviderDown = function(id) {
-  const currIdx = providersList.findIndex(x => x.id === id);
-  if (currIdx === -1 || currIdx >= providersList.length - 1) return;
-  const targetType = providersList[currIdx].type;
+  const item = providersList.find(x => x.id === id);
+  if (!item) return;
+  const targetType = item.type;
+  const sameType = providersList.filter(p => p.type === targetType);
+  const idx = sameType.findIndex(x => x.id === id);
+  
+  if (idx !== -1 && idx < sameType.length - 1) {
+    const temp = sameType[idx];
+    sameType[idx] = sameType[idx + 1];
+    sameType[idx + 1] = temp;
 
-  let nextIdx = -1;
-  for (let i = currIdx + 1; i < providersList.length; i++) {
-    if (providersList[i].type === targetType) {
-      nextIdx = i;
-      break;
-    }
-  }
+    let stIdx = 0;
+    providersList = providersList.map(p => {
+      if (p.type === targetType) {
+        return sameType[stIdx++];
+      }
+      return p;
+    });
 
-  if (nextIdx !== -1) {
-    const temp = providersList[currIdx];
-    providersList[currIdx] = providersList[nextIdx];
-    providersList[nextIdx] = temp;
     saveProvidersState();
   }
 };
