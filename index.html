@@ -53,8 +53,14 @@
     body {
       background-color: var(--bg-dark);
       color: var(--text-main);
-      padding-bottom: 80px;
+      padding-bottom: 70px;
       min-height: 100vh;
+      font-size: 0.85rem;
+    }
+
+    .material-icons-round {
+      font-size: 18px !important;
+      vertical-align: middle;
     }
 
     .header {
@@ -63,7 +69,7 @@
       position: sticky;
       top: 0;
       z-index: 50;
-      padding: 14px 16px;
+      padding: 10px 12px;
       border-bottom: 1px solid var(--card-border);
       display: flex;
       justify-content: space-between;
@@ -71,22 +77,22 @@
     }
 
     .header-title {
-      font-size: 1.1rem;
+      font-size: 0.95rem;
       font-weight: 700;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     .user-profile {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
 
     .user-avatar {
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
       border: 1px solid var(--primary);
     }
@@ -95,14 +101,14 @@
       background: var(--primary);
       color: white;
       border: none;
-      padding: 8px 14px;
-      border-radius: 20px;
+      padding: 6px 12px;
+      border-radius: 16px;
       font-weight: 600;
-      font-size: 0.85rem;
+      font-size: 0.78rem;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
     }
 
     .btn-logout {
@@ -111,30 +117,31 @@
     }
 
     .container {
-      max-width: 520px;
+      max-width: 480px;
       margin: 0 auto;
-      padding: 16px;
+      padding: 10px;
     }
 
     .type-selector {
       display: flex;
       background: #1e293b;
-      padding: 4px;
-      border-radius: 12px;
-      margin-bottom: 20px;
+      padding: 3px;
+      border-radius: 10px;
+      margin-bottom: 12px;
       border: 1px solid var(--card-border);
+      gap: 2px;
       overflow-x: auto;
     }
 
     .tab-btn {
       flex: 1;
-      padding: 10px 8px;
+      padding: 8px 4px;
       border: none;
       background: transparent;
       color: var(--text-muted);
       font-weight: 600;
-      font-size: 0.82rem;
-      border-radius: 8px;
+      font-size: 0.72rem;
+      border-radius: 6px;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -147,36 +154,36 @@
     .tab-btn.active {
       background: var(--primary);
       color: white;
-      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
     }
 
     .card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 16px;
-      padding: 18px;
-      margin-bottom: 18px;
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
     }
 
     .card-title {
-      font-size: 1rem;
+      font-size: 0.88rem;
       font-weight: 700;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
       color: var(--text-main);
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     .form-group {
-      margin-bottom: 14px;
+      margin-bottom: 10px;
     }
 
     .form-label {
       display: block;
-      font-size: 0.8rem;
+      font-size: 0.72rem;
       color: var(--text-muted);
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       font-weight: 500;
     }
 
@@ -184,10 +191,10 @@
       width: 100%;
       background: #0f172a;
       border: 1px solid var(--card-border);
-      border-radius: 10px;
-      padding: 12px;
+      border-radius: 8px;
+      padding: 8px 10px;
       color: white;
-      font-size: 0.95rem;
+      font-size: 0.85rem;
       outline: none;
       transition: border-color 0.2s;
     }
@@ -199,31 +206,33 @@
     .grid-2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      gap: 10px;
     }
 
     .estimate-box {
-      background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(2, 132, 199, 0.1));
-      border: 1px solid rgba(37, 99, 235, 0.3);
-      border-radius: 14px;
-      padding: 14px;
-      margin-top: 16px;
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 10px;
+      margin-top: 10px;
+      margin-bottom: 10px;
     }
 
     .estimate-row {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 8px;
-      font-size: 0.88rem;
+      font-size: 0.78rem;
+      padding: 3px 0;
+      color: var(--text-muted);
     }
 
     .estimate-row.total {
-      border-top: 1px solid var(--card-border);
-      padding-top: 10px;
-      margin-top: 10px;
       font-weight: 700;
-      font-size: 1.05rem;
-      color: var(--success);
+      color: var(--text-main);
+      font-size: 0.85rem;
+      border-top: 1px dashed var(--card-border);
+      padding-top: 6px;
+      margin-top: 4px;
     }
 
     .btn-submit {
@@ -231,16 +240,19 @@
       background: var(--primary);
       color: white;
       border: none;
-      padding: 13px;
-      border-radius: 12px;
-      font-size: 0.95rem;
-      font-weight: 700;
+      padding: 9px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.82rem;
       cursor: pointer;
-      margin-top: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 6px;
+    }
+
+    .btn-submit:hover {
+      background: var(--primary-dark);
     }
 
     .btn-secondary {
@@ -248,38 +260,47 @@
       color: white;
     }
 
-    .history-item {
+    .hidden {
+      display: none !important;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .cycle-card {
       background: #0f172a;
       border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 14px;
+      border-radius: 10px;
+      padding: 10px;
       margin-bottom: 10px;
+    }
+
+    .history-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px dashed rgba(255,255,255,0.08);
+    }
+
+    .history-item:last-child {
+      border-bottom: none;
     }
 
     .history-info {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .history-title {
-      font-weight: 600;
-      font-size: 0.95rem;
-    }
-
-    .history-sub {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
-
-    .history-price {
-      font-weight: 700;
-      font-size: 1rem;
-      color: var(--success);
-      text-align: right;
+      font-size: 0.75rem;
     }
 
     .btn-delete {
@@ -287,71 +308,48 @@
       border: none;
       color: var(--danger);
       cursor: pointer;
-      padding: 6px;
-      border-radius: 6px;
-    }
-
-    .sync-status-badge {
-      font-size: 0.75rem;
-      padding: 4px 8px;
-      border-radius: 12px;
-      background: rgba(16, 185, 129, 0.15);
-      color: var(--success);
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .modal-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.85);
+      padding: 2px;
       display: flex;
       align-items: center;
-      justify-content: center;
-      z-index: 100;
-      padding: 16px;
     }
-
-    .hidden { display: none !important; }
   </style>
 </head>
 <body>
 
-  <!-- App Header -->
+  <!-- Top App Bar -->
   <header class="header">
     <div class="header-title">
-      <span class="material-icons-round" style="color:#2563eb;">bolt</span>
-      Utility Estimator
+      <span class="material-icons-round" style="color:#38bdf8;">analytics</span>
+      Utility Calculator
     </div>
     <div class="user-profile">
-      <div id="userInfo" class="hidden" style="display:flex; align-items:center; gap:8px;">
-        <img id="userAvatar" class="user-avatar" src="" alt="User">
-        <button class="btn-logout" id="btnLogoutBtn">Logout</button>
-      </div>
-      <button class="btn-login" id="btnLoginBtn">
-        <span class="material-icons-round" style="font-size:18px;">account_circle</span>
-        Google Sign In
+      <button class="btn-login" id="btnLogin">
+        <span class="material-icons-round">login</span> <span id="loginBtnText">Sign In</span>
       </button>
+      <div id="userInfo" class="user-profile hidden">
+        <img id="userAvatar" class="user-avatar" src="" alt="Avatar">
+        <button class="btn-logout" id="btnLogout">
+          <span class="material-icons-round">logout</span>
+        </button>
+      </div>
     </div>
   </header>
 
-  <!-- Main Container -->
   <main class="container">
 
-    <!-- Tab Selector -->
+    <!-- Screen Tabs Navigation -->
     <div class="type-selector">
       <button class="tab-btn active" data-type="WATER">
-        <span class="material-icons-round" style="color:#38bdf8;">water_drop</span> Water
+        <span class="material-icons-round" style="color:#0284c7;">water_drop</span> Water
       </button>
       <button class="tab-btn" data-type="ELECTRICITY">
-        <span class="material-icons-round" style="color:#fbbf24;">bolt</span> Electricity
+        <span class="material-icons-round" style="color:#f59e0b;">bolt</span> Electricity
       </button>
       <button class="tab-btn" data-type="RATES">
-        <span class="material-icons-round" style="color:#a855f7;">tune</span> Rates & Providers
+        <span class="material-icons-round" style="color:#a855f7;">tune</span> Rates
       </button>
       <button class="tab-btn" data-type="HISTORY">
-        <span class="material-icons-round" style="color:#10b981;">history</span> History & Sync
+        <span class="material-icons-round" style="color:#10b981;">history</span> History
       </button>
     </div>
 
@@ -367,13 +365,13 @@
           </div>
           <div class="form-group">
             <label class="form-label">Current Reading (m³)</label>
-            <input type="text" id="waterCurrInput" class="form-input" inputmode="numeric" placeholder="Auto 4-decimal (amount style)">
+            <input type="text" id="waterCurrInput" class="form-input" inputmode="numeric" placeholder="Auto 4-decimal">
           </div>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Notes (Optional)</label>
-          <input type="text" id="waterNotesInput" class="form-input" placeholder="e.g. End of month reading">
+          <label class="form-label">Start of Cycle Date</label>
+          <input type="date" id="waterCycleStartInput" class="form-input">
         </div>
 
         <div class="estimate-box">
@@ -413,13 +411,13 @@
           </div>
           <div class="form-group">
             <label class="form-label">Current Reading (kWh)</label>
-            <input type="text" id="elecCurrInput" class="form-input" inputmode="numeric" placeholder="Auto 4-decimal (amount style)">
+            <input type="text" id="elecCurrInput" class="form-input" inputmode="numeric" placeholder="Auto 4-decimal">
           </div>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Notes (Optional)</label>
-          <input type="text" id="elecNotesInput" class="form-input" placeholder="e.g. Mid month check">
+          <label class="form-label">Start of Cycle Date</label>
+          <input type="date" id="elecCycleStartInput" class="form-input">
         </div>
 
         <div class="estimate-box">
@@ -447,17 +445,17 @@
       </div>
     </div>
 
-    <!-- Manual Keying in of Rates & Providers -->
+    <!-- Rates & Providers Configuration -->
     <div id="sectionRates" class="tab-section hidden">
       <div class="card">
-        <div class="card-title">⚙️ Manual Provider & Rate Configuration</div>
-        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:16px;">
-          Key in custom tariff rates, conservation taxes, or flat rates below. These rates will automatically apply to your bill calculations.
+        <div class="card-title">⚙️ Provider & Rate Configuration</div>
+        <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:12px;">
+          Set tariff rates, taxes, and refuse fees to match your exact utility bill settings.
         </p>
 
         <!-- Water Rates Form -->
-        <div style="border-bottom:1px solid var(--card-border); padding-bottom:16px; margin-bottom:16px;">
-          <h4 style="font-size:0.9rem; color:#38bdf8; margin-bottom:10px;">💧 Water Rates Configuration</h4>
+        <div style="border-bottom:1px solid var(--card-border); padding-bottom:12px; margin-bottom:12px;">
+          <h4 style="font-size:0.82rem; color:#38bdf8; margin-bottom:8px;">💧 Water Rates</h4>
           
           <div class="form-group">
             <label class="form-label">Provider Name</label>
@@ -505,8 +503,8 @@
         </div>
 
         <!-- Electricity Rates Form -->
-        <div style="padding-bottom:10px;">
-          <h4 style="font-size:0.9rem; color:#fbbf24; margin-bottom:10px;">⚡ Electricity Rates Configuration</h4>
+        <div style="border-bottom:1px solid var(--card-border); padding-bottom:12px; margin-bottom:12px;">
+          <h4 style="font-size:0.82rem; color:#fbbf24; margin-bottom:8px;">⚡ Electricity Rates</h4>
           
           <div class="form-group">
             <label class="form-label">Provider Name</label>
@@ -525,6 +523,22 @@
           </div>
         </div>
 
+        <!-- Refuse Collection Rates Form -->
+        <div style="padding-bottom:10px;">
+          <h4 style="font-size:0.82rem; color:#a7f3d0; margin-bottom:8px;">🗑️ Refuse Collection</h4>
+          
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Provider Name</label>
+              <input type="text" id="rateRefuseName" class="form-input" value="800 Super / Colex">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Monthly Refuse Fee ($)</label>
+              <input type="number" step="0.01" id="rateRefuseFee" class="form-input" value="8.25">
+            </div>
+          </div>
+        </div>
+
         <button class="btn-submit" id="btnSaveRates">
           <span class="material-icons-round">check_circle</span> Save Custom Rates
         </button>
@@ -536,18 +550,18 @@
       <!-- Sync Config Card -->
       <div class="card">
         <div class="card-title">
-          <span class="material-icons-round" style="color:#10b981;">sync</span> 2-Way Firebase / JSONBin Sync
+          <span class="material-icons-round" style="color:#10b981;">sync</span> 2-Way Firebase / Cloud Sync
         </div>
-        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">
-          Connect to your Firebase Realtime DB URL or JSONBin to sync readings automatically between Android and Web:
+        <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">
+          Connect to your Firebase Realtime DB URL to sync readings between devices:
         </p>
         
         <div class="form-group">
           <label class="form-label">Database Endpoint URL / Firebase URL</label>
-          <input type="text" id="syncDbUrl" class="form-input" placeholder="https://my-app.firebaseio.com or JSONBin ID">
+          <input type="text" id="syncDbUrl" class="form-input" placeholder="https://utility-reading-default-rtdb.asia-southeast1.firebasedatabase.app">
         </div>
 
-        <div style="display:flex; gap:10px;">
+        <div style="display:flex; gap:8px;">
           <button class="btn-submit btn-secondary" id="btnPullSync" style="flex:1; margin-top:0;">
             <span class="material-icons-round">cloud_download</span> Pull Latest
           </button>
@@ -558,9 +572,9 @@
       </div>
 
       <div class="card">
-        <div class="card-title">📜 Saved Readings History</div>
+        <div class="card-title">📜 Saved Readings History (By Month Cycle)</div>
         <div id="historyList">
-          <p style="text-align:center; color:var(--text-muted); padding:20px;">No saved readings found.</p>
+          <p style="text-align:center; color:var(--text-muted); padding:16px; font-size:0.8rem;">No saved readings found.</p>
         </div>
       </div>
     </div>
@@ -569,20 +583,15 @@
 
   <!-- Firebase Setup Modal -->
   <div id="configModal" class="modal-overlay hidden">
-    <div class="card" style="width:100%; max-width:440px; margin:0;">
+    <div class="card" style="width:100%; max-width:420px; margin:0;">
       <div class="card-title">🔥 Firebase Web Auth Setup</div>
-      <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">
-        Paste your Firebase Web App configuration JSON below to enable Google Sign-In across multiple users:
+      <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">
+        Paste your Firebase Web App configuration JSON below to enable Google Sign-In:
       </p>
       
       <div class="form-group">
         <label class="form-label">Firebase Config JSON</label>
-        <textarea id="firebaseConfigText" class="form-input" rows="6" placeholder='{
-  "apiKey": "AIzaSy...",
-  "authDomain": "my-app.firebaseapp.com",
-  "databaseURL": "https://my-app.firebaseio.com",
-  "projectId": "my-app"
-}'></textarea>
+        <textarea id="firebaseConfigText" class="form-input" rows="5" placeholder='{ "apiKey": "AIzaSy...", ... }'></textarea>
       </div>
 
       <div class="grid-2">
@@ -599,16 +608,59 @@
     let currentUser = null;
     let userReadings = [];
 
-    // Custom Rate Settings State
-    let customRates = JSON.parse(localStorage.getItem('utility_custom_rates') || 'null') || {
-      water: { name: 'PUB Water (SG)', model: 'SG_TIERED', t1Tariff: 1.21, t1Wct: 0.78, t1Wbf: 0.60, gst: 9.0, flat: 1.20 },
-      elec: { name: 'SP Group', tariff: 0.2989, gst: 9.0 }
+    // Helper: Default start of cycle date calculation
+    function getDefaultCycleStartDate() {
+      const today = new Date();
+      let year = today.getFullYear();
+      let month = today.getMonth();
+      if (today.getDate() < 28) {
+        month -= 1;
+        if (month < 0) {
+          month = 11;
+          year -= 1;
+        }
+      }
+      const yyyy = year;
+      const mm = String(month + 1).padStart(2, '0');
+      return `${yyyy}-${mm}-28`;
+    }
+
+    // Initialize cycle date inputs
+    const defaultCycleDate = getDefaultCycleStartDate();
+    document.getElementById('waterCycleStartInput').value = defaultCycleDate;
+    document.getElementById('elecCycleStartInput').value = defaultCycleDate;
+
+    // Custom Rates State
+    let customRates = JSON.parse(localStorage.getItem('utility_custom_rates')) || {
+      water: {
+        name: 'PUB Water (SG)',
+        model: 'SG_TIERED',
+        t1Tariff: 1.210,
+        t1Wct: 0.780,
+        t1Wbf: 0.600,
+        gst: 9.0,
+        flat: 1.20
+      },
+      elec: {
+        name: 'SP Group',
+        tariff: 0.2989,
+        gst: 9.0
+      },
+      refuse: {
+        name: '800 Super / Colex',
+        fee: 8.25
+      }
     };
 
     function updateRateLabels() {
-      document.getElementById('activeWaterProviderLabel').innerText = `${customRates.water.name} (${customRates.water.model === 'SG_TIERED' ? 'Tiered' : 'Flat'})`;
-      document.getElementById('activeElecProviderLabel').innerText = `${customRates.elec.name}`;
+      document.getElementById('activeWaterProviderLabel').innerText = customRates.water.name + (customRates.water.model === 'SG_TIERED' ? ' (Tiered)' : ' (Flat)');
+      document.getElementById('activeElecProviderLabel').innerText = customRates.elec.name + ' (Flat)';
       document.getElementById('elecTariffLabel').innerText = `$${customRates.elec.tariff.toFixed(4)} / kWh`;
+      
+      if (customRates.refuse) {
+        document.getElementById('rateRefuseName').value = customRates.refuse.name || '800 Super / Colex';
+        document.getElementById('rateRefuseFee').value = customRates.refuse.fee || 8.25;
+      }
     }
 
     // Auto-format meter reading with amount-style backwards decimal entry (e.g. 1423.6000)
@@ -679,16 +731,18 @@
     function calculateElecEst() {
       const prev = parseFloat(elecPrevEl.value) || 0;
       const curr = parseFloat(elecCurrEl.value) || 0;
-      const cfg = customRates.elec;
       const usage = Math.max(0, curr - prev);
-      const total = usage * cfg.tariff * (1 + (cfg.gst / 100));
+      const cfg = customRates.elec;
+
+      const baseCost = usage * cfg.tariff;
+      const total = baseCost * (1 + (cfg.gst / 100));
 
       document.getElementById('elecUsageEst').innerText = `${usage.toFixed(1)} kWh`;
       document.getElementById('elecTotalEst').innerText = `$${total.toFixed(2)}`;
       return { usage, total };
     }
 
-    // Rate Model Switch Listener
+    // Toggle water rate model UI
     document.getElementById('rateWaterModel').addEventListener('change', (e) => {
       if (e.target.value === 'FLAT') {
         document.getElementById('waterTieredGroup').classList.add('hidden');
@@ -715,6 +769,10 @@
           name: document.getElementById('rateElecName').value.trim() || 'Electricity Provider',
           tariff: parseFloat(document.getElementById('rateElecTariff').value) || 0.2989,
           gst: parseFloat(document.getElementById('rateElecGst').value) || 9.0
+        },
+        refuse: {
+          name: document.getElementById('rateRefuseName').value.trim() || 'Refuse Collection',
+          fee: parseFloat(document.getElementById('rateRefuseFee').value) || 8.25
         }
       };
       localStorage.setItem('utility_custom_rates', JSON.stringify(customRates));
@@ -741,12 +799,14 @@
       });
     });
 
-    // Save Reading & Sync to Firebase
+    // Save Reading & Sync
     document.getElementById('btnSaveWater').addEventListener('click', async () => {
       const est = calculateWaterEst();
       const prev = parseFloat(waterPrevEl.value) || 0;
       const curr = parseFloat(waterCurrEl.value) || 0;
       if (curr <= 0) { alert('Please enter a valid current reading.'); return; }
+
+      const cycleDate = document.getElementById('waterCycleStartInput').value || defaultCycleDate;
 
       const item = {
         type: 'WATER',
@@ -759,13 +819,12 @@
         readingDate: Date.now(),
         timestamp: Date.now(),
         date: new Date().toISOString(),
-        notes: document.getElementById('waterNotesInput').value
+        cycleStartDate: cycleDate
       };
 
       await saveAndSyncReading(item);
-      waterPrevEl.value = curr.toFixed(1);
+      waterPrevEl.value = curr.toFixed(4);
       waterCurrEl.value = '';
-      document.getElementById('waterNotesInput').value = '';
       alert('Water reading saved and synced!');
     });
 
@@ -774,6 +833,8 @@
       const prev = parseFloat(elecPrevEl.value) || 0;
       const curr = parseFloat(elecCurrEl.value) || 0;
       if (curr <= 0) { alert('Please enter a valid current reading.'); return; }
+
+      const cycleDate = document.getElementById('elecCycleStartInput').value || defaultCycleDate;
 
       const item = {
         type: 'ELECTRICITY',
@@ -786,13 +847,12 @@
         readingDate: Date.now(),
         timestamp: Date.now(),
         date: new Date().toISOString(),
-        notes: document.getElementById('elecNotesInput').value
+        cycleStartDate: cycleDate
       };
 
       await saveAndSyncReading(item);
-      elecPrevEl.value = curr.toFixed(1);
+      elecPrevEl.value = curr.toFixed(4);
       elecCurrEl.value = '';
-      document.getElementById('elecNotesInput').value = '';
       alert('Electricity reading saved and synced!');
     });
 
@@ -800,7 +860,6 @@
       userReadings.push(item);
       localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
 
-      // 1. Firebase Auth Realtime DB Sync
       if (db && currentUser) {
         try {
           const { ref, push } = window.FirebaseSDK;
@@ -809,7 +868,6 @@
         } catch(e) { console.error(e); }
       }
 
-      // 2. Direct REST / JSONBin Sync (Matching Android syncToFirebase)
       const dbUrl = document.getElementById('syncDbUrl').value.trim() || localStorage.getItem('utility_sync_url') || '';
       if (dbUrl) {
         try {
@@ -833,7 +891,6 @@
     document.getElementById('btnPullSync').addEventListener('click', async () => {
       let dbUrl = document.getElementById('syncDbUrl').value.trim();
       if (!dbUrl && db && currentUser) {
-        // Pull from Firebase Auth Realtime DB
         const { ref, get } = window.FirebaseSDK;
         const snap = await get(ref(db, `users/${currentUser.uid}/readings`));
         if (snap.exists()) {
@@ -893,32 +950,115 @@
       }
     });
 
+    // Helper: Cycle date formatter
+    function formatCycleRange(startDateStr) {
+      if (!startDateStr) return 'Uncategorized Cycle';
+      const parts = startDateStr.split('-');
+      if (parts.length !== 3) return startDateStr;
+      
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      
+      const start = new Date(year, month, day);
+      const end = new Date(year, month + 1, day - 1);
+
+      const startMonth = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const endMonth = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return `${startMonth} - ${endMonth}`;
+    }
+
     function renderHistory() {
       const historyList = document.getElementById('historyList');
       if (userReadings.length === 0) {
-        historyList.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:20px;">No saved readings yet.</p>`;
+        historyList.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:16px; font-size:0.78rem;">No saved readings found.</p>`;
         return;
       }
 
-      historyList.innerHTML = userReadings.slice().reverse().map((r, index) => {
-        const readingVal = r.currentReading || r.reading || 0;
-        const prevVal = r.previousReading || 0;
-        const dateStr = new Date(r.readingDate || r.timestamp || r.date || Date.now()).toLocaleDateString();
-        return `
-          <div class="history-item">
-            <div class="history-info">
-              <div class="history-title">${r.type === 'WATER' ? '💧 Water' : '⚡ Electricity'} - ${(r.usage || 0).toFixed(1)} ${r.type === 'WATER' ? 'm³' : 'kWh'}</div>
-              <div class="history-sub">${dateStr} | Read: ${readingVal} (Prev: ${prevVal}) | ${r.providerName || 'Default'}</div>
+      // Group readings by cycle
+      const cyclesMap = {};
+      userReadings.forEach((r, idx) => {
+        let cycleKey = r.cycleStartDate;
+        if (!cycleKey) {
+          const rd = new Date(r.readingDate || r.timestamp || Date.now());
+          let y = rd.getFullYear();
+          let m = rd.getMonth();
+          if (rd.getDate() < 28) {
+            m -= 1;
+            if (m < 0) { m = 11; y -= 1; }
+          }
+          cycleKey = `${y}-${String(m + 1).padStart(2, '0')}-28`;
+        }
+        
+        if (!cyclesMap[cycleKey]) {
+          cyclesMap[cycleKey] = [];
+        }
+        cyclesMap[cycleKey].push({ item: r, originalIndex: idx });
+      });
+
+      const refuseFee = customRates.refuse ? (customRates.refuse.fee || 8.25) : 8.25;
+      const sortedCycles = Object.keys(cyclesMap).sort().reverse();
+
+      let html = '';
+      sortedCycles.forEach(cycleKey => {
+        const readingsGroup = cyclesMap[cycleKey];
+        const cycleLabel = formatCycleRange(cycleKey);
+
+        let waterTotal = 0;
+        let elecTotal = 0;
+
+        readingsGroup.forEach(({ item }) => {
+          const amt = item.totalAmount || item.calculatedBill || 0;
+          if (item.type === 'WATER') waterTotal += amt;
+          if (item.type === 'ELECTRICITY') elecTotal += amt;
+        });
+
+        const monthCycleTotal = waterTotal + elecTotal + refuseFee;
+
+        html += `
+          <div class="cycle-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--card-border); padding-bottom:6px; margin-bottom:8px;">
+              <div style="font-weight:700; font-size:0.8rem; color:#38bdf8; display:flex; align-items:center; gap:4px;">
+                <span class="material-icons-round" style="font-size:16px;">date_range</span>
+                Cycle: ${cycleLabel}
+              </div>
+              <div style="font-weight:700; font-size:0.88rem; color:#10b981;">
+                S$${monthCycleTotal.toFixed(2)}
+              </div>
             </div>
-            <div style="display:flex; align-items:center; gap:10px;">
-              <div class="history-price">$${(r.totalAmount || r.calculatedBill || 0).toFixed(2)}</div>
-              <button class="btn-delete" onclick="deleteItem(${userReadings.length - 1 - index})">
-                <span class="material-icons-round">delete</span>
-              </button>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px; background:#1e293b; padding:6px; border-radius:6px; margin-bottom:8px; font-size:0.72rem;">
+              <div>💧 Water: <strong style="color:white;">$${waterTotal.toFixed(2)}</strong></div>
+              <div>⚡ Elec: <strong style="color:white;">$${elecTotal.toFixed(2)}</strong></div>
+              <div>🗑️ Refuse: <strong style="color:white;">$${refuseFee.toFixed(2)}</strong></div>
+            </div>
+
+            <div>
+              ${readingsGroup.map(({ item, originalIndex }) => {
+                const readingVal = item.currentReading || item.reading || 0;
+                const prevVal = item.previousReading || 0;
+                const dateStr = new Date(item.readingDate || item.timestamp || Date.now()).toLocaleDateString();
+                return `
+                  <div class="history-item">
+                    <div class="history-info">
+                      <div style="font-weight:600; color:var(--text-main);">${item.type === 'WATER' ? '💧 Water' : '⚡ Electricity'} - ${(item.usage || 0).toFixed(1)} ${item.type === 'WATER' ? 'm³' : 'kWh'}</div>
+                      <div style="color:var(--text-muted); font-size:0.7rem;">${dateStr} | ${prevVal} ➔ ${readingVal} | ${item.providerName || 'Default'}</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                      <span style="font-weight:600; font-size:0.8rem; color:var(--text-main);">$${(item.totalAmount || item.calculatedBill || 0).toFixed(2)}</span>
+                      <button class="btn-delete" onclick="deleteItem(${originalIndex})">
+                        <span class="material-icons-round">delete</span>
+                      </button>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
             </div>
           </div>
         `;
-      }).join('');
+      });
+
+      historyList.innerHTML = html;
     }
 
     window.deleteItem = async (index) => {
@@ -934,7 +1074,7 @@
       renderHistory();
     };
 
-    // Default User Provided Firebase Config
+    // Default Firebase Config
     const defaultFirebaseConfig = {
       apiKey: "AIzaSyD7ILTXVKJ2Cd1KYALBHhllipzXNJqmG0c",
       authDomain: "utility-reading.firebaseapp.com",
@@ -971,30 +1111,39 @@
       document.getElementById('syncDbUrl').value = savedSyncUrl;
     }
 
-    function initFirebase(config) {
+    const localSaved = localStorage.getItem('utility_readings_local');
+    if (localSaved) {
+      try { userReadings = JSON.parse(localSaved); } catch(e) {}
+    }
+
+    updateRateLabels();
+
+    function initFirebase(cfg) {
       try {
-        const { initializeApp, getAuth, GoogleAuthProvider, getDatabase, onAuthStateChanged, ref, onValue } = window.FirebaseSDK;
-        const app = initializeApp(config);
+        const { initializeApp, getAuth, getDatabase, onAuthStateChanged, ref, onValue } = window.FirebaseSDK;
+        const app = initializeApp(cfg);
         auth = getAuth(app);
         db = getDatabase(app);
 
         onAuthStateChanged(auth, (user) => {
           currentUser = user;
           if (user) {
-            document.getElementById('btnLoginBtn').classList.add('hidden');
+            document.getElementById('btnLogin').classList.add('hidden');
             document.getElementById('userInfo').classList.remove('hidden');
             document.getElementById('userAvatar').src = user.photoURL || 'https://via.placeholder.com/32';
-
+            
             const userReadingsRef = ref(db, `users/${user.uid}/readings`);
             onValue(userReadingsRef, (snapshot) => {
-              const data = snapshot.val();
-              userReadings = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
-              renderHistory();
+              if (snapshot.exists()) {
+                const data = snapshot.val();
+                userReadings = Object.entries(data).map(([id, val]) => ({ id, ...val }));
+                localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
+                renderHistory();
+              }
             });
           } else {
-            document.getElementById('btnLoginBtn').classList.remove('hidden');
+            document.getElementById('btnLogin').classList.remove('hidden');
             document.getElementById('userInfo').classList.add('hidden');
-            userReadings = JSON.parse(localStorage.getItem('utility_readings_local') || '[]');
             renderHistory();
           }
         });
@@ -1005,7 +1154,7 @@
       }
     }
 
-    document.getElementById('btnLoginBtn').addEventListener('click', async () => {
+    document.getElementById('btnLogin').addEventListener('click', async () => {
       if (!auth) {
         const success = initFirebase(activeConfig);
         if (!success || !auth) {
@@ -1028,10 +1177,10 @@
       }
     });
 
-    document.getElementById('btnLogoutBtn').addEventListener('click', () => {
+    document.getElementById('btnLogout').addEventListener('click', async () => {
       if (auth) {
         const { signOut } = window.FirebaseSDK;
-        signOut(auth);
+        await signOut(auth);
       }
     });
 
@@ -1057,10 +1206,6 @@
       }
     });
 
-    // Init display
-    updateRateLabels();
-    userReadings = JSON.parse(localStorage.getItem('utility_readings_local') || '[]');
-    renderHistory();
   </script>
 </body>
 </html>
