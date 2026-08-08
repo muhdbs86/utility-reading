@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Utility Bill Estimator</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f172a">
+  
+  <!-- Google Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+  <!-- Firebase Web SDK v10 (CDN) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getDatabase, ref, push, set, onValue, remove, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    window.FirebaseSDK = {
+      initializeApp, getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
+      getDatabase, ref, push, set, onValue, remove, get
+    };
+  </script>
+
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-water: #0284c7;
+      --accent-elec: #d97706;
+      --danger: #ef4444;
+      --success: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      padding-bottom: 80px;
+      min-height: 100vh;
+    }
+
+    .header {
+      background-color: rgba(30, 41, 59, 0.95);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--primary);
+    }
+
+    .btn-login, .btn-logout {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-logout {
+      background: #334155;
+      color: var(--text-muted);
+    }
+
+    .container {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .type-selector {
+      display: flex;
+      background: #1e293b;
+      padding: 4px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      border: 1px solid var(--card-border);
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px 8px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.82rem;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 14px;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .form-input {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 12px;
+      color: white;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus {
+      border-color: var(--primary);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .estimate-box {
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(2, 132, 199, 0.1));
+      border: 1px solid rgba(37, 99, 235, 0.3);
+      border-radius: 14px;
+      padding: 14px;
+      margin-top: 16px;
+    }
+
+    .estimate-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 0.88rem;
+    }
+
+    .estimate-row.total {
+      border-top: 1px solid var(--card-border);
+      padding-top: 10px;
+      margin-top: 10px;
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--success);
+    }
+
+    .btn-submit {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 13px;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-secondary {
+      background: #334155;
+      color: white;
+    }
+
+    .history-item {
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .history-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .history-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .history-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .history-price {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--success);
+      text-align: right;
+    }
+
+    .btn-delete {
+      background: transparent;
+      border: none;
+      color: var(--danger);
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 6px;
+    }
+
+    .sync-status-badge {
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 12px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 16px;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- App Header -->
+  <header class="header">
+    <div class="header-title">
+      <span class="material-icons-round" style="color:#2563eb;">bolt</span>
+      Utility Estimator
+    </div>
+    <div class="user-profile">
+      <div id="userInfo" class="hidden" style="display:flex; align-items:center; gap:8px;">
+        <img id="userAvatar" class="user-avatar" src="" alt="User">
+        <button class="btn-logout" id="btnLogoutBtn">Logout</button>
+      </div>
+      <button class="btn-login" id="btnLoginBtn">
+        <span class="material-icons-round" style="font-size:18px;">account_circle</span>
+        Google Sign In
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="container">
+
+    <!-- Tab Selector -->
+    <div class="type-selector">
+      <button class="tab-btn active" data-type="WATER">
+        <span class="material-icons-round" style="color:#38bdf8;">water_drop</span> Water
+      </button>
+      <button class="tab-btn" data-type="ELECTRICITY">
+        <span class="material-icons-round" style="color:#fbbf24;">bolt</span> Electricity
+      </button>
+      <button class="tab-btn" data-type="RATES">
+        <span class="material-icons-round" style="color:#a855f7;">tune</span> Rates & Providers
+      </button>
+      <button class="tab-btn" data-type="HISTORY">
+        <span class="material-icons-round" style="color:#10b981;">history</span> History & Sync
+      </button>
+    </div>
+
+    <!-- Water Form Screen -->
+    <div id="sectionWater" class="tab-section">
+      <div class="card">
+        <div class="card-title">💧 Water Reading Entry</div>
+        
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Previous Reading (m³)</label>
+            <input type="text" id="waterPrevInput" class="form-input" placeholder="0.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Current Reading (m³)</label>
+            <input type="text" id="waterCurrInput" class="form-input" placeholder="Auto 1-decimal">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notes (Optional)</label>
+          <input type="text" id="waterNotesInput" class="form-input" placeholder="e.g. End of month reading">
+        </div>
+
+        <div class="estimate-box">
+          <div class="estimate-row">
+            <span>Active Provider:</span>
+            <strong id="activeWaterProviderLabel">PUB Water (Tiered)</strong>
+          </div>
+          <div class="estimate-row">
+            <span>Estimated Usage:</span>
+            <strong id="waterUsageEst">0.0 m³</strong>
+          </div>
+          <div class="estimate-row">
+            <span>Water Tariff & Taxes:</span>
+            <strong id="waterTaxEst">$0.00</strong>
+          </div>
+          <div class="estimate-row total">
+            <span>Est. Total Bill:</span>
+            <strong id="waterTotalEst">$0.00</strong>
+          </div>
+        </div>
+
+        <button class="btn-submit" id="btnSaveWater">
+          <span class="material-icons-round">save</span> Save Water Reading
+        </button>
+      </div>
+    </div>
+
+    <!-- Electricity Form Screen -->
+    <div id="sectionElectricity" class="tab-section hidden">
+      <div class="card">
+        <div class="card-title">⚡ Electricity Reading Entry</div>
+        
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Previous Reading (kWh)</label>
+            <input type="number" id="elecPrevInput" class="form-input" placeholder="0.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Current Reading (kWh)</label>
+            <input type="number" id="elecCurrInput" class="form-input" placeholder="0.0">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notes (Optional)</label>
+          <input type="text" id="elecNotesInput" class="form-input" placeholder="e.g. Mid month check">
+        </div>
+
+        <div class="estimate-box">
+          <div class="estimate-row">
+            <span>Active Provider:</span>
+            <strong id="activeElecProviderLabel">SP Group (Flat)</strong>
+          </div>
+          <div class="estimate-row">
+            <span>Tariff Rate:</span>
+            <strong id="elecTariffLabel">$0.2989 / kWh</strong>
+          </div>
+          <div class="estimate-row">
+            <span>Estimated Usage:</span>
+            <strong id="elecUsageEst">0.0 kWh</strong>
+          </div>
+          <div class="estimate-row total">
+            <span>Est. Total Bill:</span>
+            <strong id="elecTotalEst">$0.00</strong>
+          </div>
+        </div>
+
+        <button class="btn-submit" id="btnSaveElectricity">
+          <span class="material-icons-round">save</span> Save Electricity Reading
+        </button>
+      </div>
+    </div>
+
+    <!-- Manual Keying in of Rates & Providers -->
+    <div id="sectionRates" class="tab-section hidden">
+      <div class="card">
+        <div class="card-title">⚙️ Manual Provider & Rate Configuration</div>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:16px;">
+          Key in custom tariff rates, conservation taxes, or flat rates below. These rates will automatically apply to your bill calculations.
+        </p>
+
+        <!-- Water Rates Form -->
+        <div style="border-bottom:1px solid var(--card-border); padding-bottom:16px; margin-bottom:16px;">
+          <h4 style="font-size:0.9rem; color:#38bdf8; margin-bottom:10px;">💧 Water Rates Configuration</h4>
+          
+          <div class="form-group">
+            <label class="form-label">Provider Name</label>
+            <input type="text" id="rateWaterName" class="form-input" value="PUB Water (SG)">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Rate Model</label>
+            <select id="rateWaterModel" class="form-input">
+              <option value="SG_TIERED">Singapore Tiered (Tariff + WCT + WBF)</option>
+              <option value="FLAT">Flat Rate ($ / m³)</option>
+            </select>
+          </div>
+
+          <div id="waterTieredGroup">
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label">Tier 1 Tariff ($/m³)</label>
+                <input type="number" step="0.001" id="rateWaterT1Tariff" class="form-input" value="1.210">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Tier 1 WCT ($/m³)</label>
+                <input type="number" step="0.001" id="rateWaterT1Wct" class="form-input" value="0.780">
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label">Tier 1 WBF ($/m³)</label>
+                <input type="number" step="0.001" id="rateWaterT1Wbf" class="form-input" value="0.600">
+              </div>
+              <div class="form-group">
+                <label class="form-label">GST Tax (%)</label>
+                <input type="number" step="0.1" id="rateWaterGst" class="form-input" value="9.0">
+              </div>
+            </div>
+          </div>
+
+          <div id="waterFlatGroup" class="hidden">
+            <div class="form-group">
+              <label class="form-label">Flat Rate per m³ ($)</label>
+              <input type="number" step="0.01" id="rateWaterFlat" class="form-input" value="1.20">
+            </div>
+          </div>
+        </div>
+
+        <!-- Electricity Rates Form -->
+        <div style="padding-bottom:10px;">
+          <h4 style="font-size:0.9rem; color:#fbbf24; margin-bottom:10px;">⚡ Electricity Rates Configuration</h4>
+          
+          <div class="form-group">
+            <label class="form-label">Provider Name</label>
+            <input type="text" id="rateElecName" class="form-input" value="SP Group">
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Tariff Rate ($ / kWh)</label>
+              <input type="number" step="0.0001" id="rateElecTariff" class="form-input" value="0.2989">
+            </div>
+            <div class="form-group">
+              <label class="form-label">GST Tax (%)</label>
+              <input type="number" step="0.1" id="rateElecGst" class="form-input" value="9.0">
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-submit" id="btnSaveRates">
+          <span class="material-icons-round">check_circle</span> Save Custom Rates
+        </button>
+      </div>
+    </div>
+
+    <!-- History & 2-Way Sync Screen -->
+    <div id="sectionHistory" class="tab-section hidden">
+      <!-- Sync Config Card -->
+      <div class="card">
+        <div class="card-title">
+          <span class="material-icons-round" style="color:#10b981;">sync</span> 2-Way Firebase / JSONBin Sync
+        </div>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">
+          Connect to your Firebase Realtime DB URL or JSONBin to sync readings automatically between Android and Web:
+        </p>
+        
+        <div class="form-group">
+          <label class="form-label">Database Endpoint URL / Firebase URL</label>
+          <input type="text" id="syncDbUrl" class="form-input" placeholder="https://my-app.firebaseio.com or JSONBin ID">
+        </div>
+
+        <div style="display:flex; gap:10px;">
+          <button class="btn-submit btn-secondary" id="btnPullSync" style="flex:1; margin-top:0;">
+            <span class="material-icons-round">cloud_download</span> Pull Latest
+          </button>
+          <button class="btn-submit" id="btnPushSync" style="flex:1; margin-top:0;">
+            <span class="material-icons-round">cloud_upload</span> Push Local
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📜 Saved Readings History</div>
+        <div id="historyList">
+          <p style="text-align:center; color:var(--text-muted); padding:20px;">No saved readings found.</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Firebase Setup Modal -->
+  <div id="configModal" class="modal-overlay hidden">
+    <div class="card" style="width:100%; max-width:440px; margin:0;">
+      <div class="card-title">🔥 Firebase Web Auth Setup</div>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">
+        Paste your Firebase Web App configuration JSON below to enable Google Sign-In across multiple users:
+      </p>
+      
+      <div class="form-group">
+        <label class="form-label">Firebase Config JSON</label>
+        <textarea id="firebaseConfigText" class="form-input" rows="6" placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "my-app.firebaseapp.com",
+  "databaseURL": "https://my-app.firebaseio.com",
+  "projectId": "my-app"
+}'></textarea>
+      </div>
+
+      <div class="grid-2">
+        <button class="btn-logout" id="btnCloseConfigModal" style="width:100%;">Cancel</button>
+        <button class="btn-submit" id="btnSaveFirebaseConfig" style="margin-top:0;">Save Config</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Logic Script -->
+  <script type="module">
+    let db = null;
+    let auth = null;
+    let currentUser = null;
+    let userReadings = [];
+
+    // Custom Rate Settings State
+    let customRates = JSON.parse(localStorage.getItem('utility_custom_rates') || 'null') || {
+      water: { name: 'PUB Water (SG)', model: 'SG_TIERED', t1Tariff: 1.21, t1Wct: 0.78, t1Wbf: 0.60, gst: 9.0, flat: 1.20 },
+      elec: { name: 'SP Group', tariff: 0.2989, gst: 9.0 }
+    };
+
+    function updateRateLabels() {
+      document.getElementById('activeWaterProviderLabel').innerText = `${customRates.water.name} (${customRates.water.model === 'SG_TIERED' ? 'Tiered' : 'Flat'})`;
+      document.getElementById('activeElecProviderLabel').innerText = `${customRates.elec.name}`;
+      document.getElementById('elecTariffLabel').innerText = `$${customRates.elec.tariff.toFixed(4)} / kWh`;
+    }
+
+    // Auto-format water reading decimal placement (1 decimal place)
+    function formatWaterInput(val) {
+      if (!val) return '';
+      if (val.includes('.')) {
+        const parts = val.split('.');
+        if (parts.length === 2 && parts[1].length >= 2) {
+          return `${parts[0].replace(/\D/g,'')}.${parts[1].replace(/\D/g,'')}`;
+        }
+      }
+      const digits = val.replace(/\D/g, '').replace(/^0+/, '') || '0';
+      if (digits.length === 1) {
+        return digits === '0' ? '0.0' : `0.${digits}`;
+      }
+      return `${digits.slice(0, -1)}.${digits.slice(-1)}`;
+    }
+
+    // Attach Water input listener
+    const waterCurrEl = document.getElementById('waterCurrInput');
+    const waterPrevEl = document.getElementById('waterPrevInput');
+    
+    [waterCurrEl, waterPrevEl].forEach(el => {
+      el.addEventListener('input', (e) => {
+        el.value = formatWaterInput(e.target.value);
+        calculateWaterEst();
+      });
+    });
+
+    // Water Estimate Calculator
+    function calculateWaterEst() {
+      const prev = parseFloat(waterPrevEl.value) || 0;
+      const curr = parseFloat(waterCurrEl.value) || 0;
+      const usage = Math.max(0, curr - prev);
+      
+      document.getElementById('waterUsageEst').innerText = `${usage.toFixed(1)} m³`;
+
+      const cfg = customRates.water;
+      let total = 0;
+      let tax = 0;
+
+      if (cfg.model === 'SG_TIERED') {
+        const t1 = Math.min(usage, 40);
+        const t2 = Math.max(0, usage - 40);
+        const baseT1 = cfg.t1Tariff + cfg.t1Wct + cfg.t1Wbf;
+        const baseT2 = 1.52 + 1.13 + 0.60;
+        const totalBase = (t1 * baseT1) + (t2 * baseT2);
+        total = totalBase * (1 + (cfg.gst / 100));
+        tax = total - (t1 * cfg.t1Tariff + t2 * 1.52);
+      } else {
+        total = usage * cfg.flat;
+      }
+
+      document.getElementById('waterTaxEst').innerText = `$${tax.toFixed(2)}`;
+      document.getElementById('waterTotalEst').innerText = `$${total.toFixed(2)}`;
+      return { usage, total };
+    }
+
+    // Electricity Estimate Calculator
+    const elecCurrEl = document.getElementById('elecCurrInput');
+    const elecPrevEl = document.getElementById('elecPrevInput');
+
+    [elecCurrEl, elecPrevEl].forEach(el => {
+      el.addEventListener('input', calculateElecEst);
+    });
+
+    function calculateElecEst() {
+      const prev = parseFloat(elecPrevEl.value) || 0;
+      const curr = parseFloat(elecCurrEl.value) || 0;
+      const cfg = customRates.elec;
+      const usage = Math.max(0, curr - prev);
+      const total = usage * cfg.tariff * (1 + (cfg.gst / 100));
+
+      document.getElementById('elecUsageEst').innerText = `${usage.toFixed(1)} kWh`;
+      document.getElementById('elecTotalEst').innerText = `$${total.toFixed(2)}`;
+      return { usage, total };
+    }
+
+    // Rate Model Switch Listener
+    document.getElementById('rateWaterModel').addEventListener('change', (e) => {
+      if (e.target.value === 'FLAT') {
+        document.getElementById('waterTieredGroup').classList.add('hidden');
+        document.getElementById('waterFlatGroup').classList.remove('hidden');
+      } else {
+        document.getElementById('waterTieredGroup').classList.remove('hidden');
+        document.getElementById('waterFlatGroup').classList.add('hidden');
+      }
+    });
+
+    // Save Custom Rates Handler
+    document.getElementById('btnSaveRates').addEventListener('click', () => {
+      customRates = {
+        water: {
+          name: document.getElementById('rateWaterName').value.trim() || 'Water Provider',
+          model: document.getElementById('rateWaterModel').value,
+          t1Tariff: parseFloat(document.getElementById('rateWaterT1Tariff').value) || 1.21,
+          t1Wct: parseFloat(document.getElementById('rateWaterT1Wct').value) || 0.78,
+          t1Wbf: parseFloat(document.getElementById('rateWaterT1Wbf').value) || 0.60,
+          gst: parseFloat(document.getElementById('rateWaterGst').value) || 9.0,
+          flat: parseFloat(document.getElementById('rateWaterFlat').value) || 1.20
+        },
+        elec: {
+          name: document.getElementById('rateElecName').value.trim() || 'Electricity Provider',
+          tariff: parseFloat(document.getElementById('rateElecTariff').value) || 0.2989,
+          gst: parseFloat(document.getElementById('rateElecGst').value) || 9.0
+        }
+      };
+      localStorage.setItem('utility_custom_rates', JSON.stringify(customRates));
+      updateRateLabels();
+      calculateWaterEst();
+      calculateElecEst();
+      alert('Custom Rates and Providers saved successfully!');
+    });
+
+    // Tab Navigation
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const type = btn.getAttribute('data-type');
+        document.querySelectorAll('.tab-section').forEach(sec => sec.classList.add('hidden'));
+        if (type === 'WATER') document.getElementById('sectionWater').classList.remove('hidden');
+        if (type === 'ELECTRICITY') document.getElementById('sectionElectricity').classList.remove('hidden');
+        if (type === 'RATES') document.getElementById('sectionRates').classList.remove('hidden');
+        if (type === 'HISTORY') {
+          document.getElementById('sectionHistory').classList.remove('hidden');
+          renderHistory();
+        }
+      });
+    });
+
+    // Save Reading & Sync to Firebase
+    document.getElementById('btnSaveWater').addEventListener('click', async () => {
+      const est = calculateWaterEst();
+      const prev = parseFloat(waterPrevEl.value) || 0;
+      const curr = parseFloat(waterCurrEl.value) || 0;
+      if (curr <= 0) { alert('Please enter a valid current reading.'); return; }
+
+      const item = {
+        type: 'WATER',
+        providerName: customRates.water.name,
+        previousReading: prev,
+        currentReading: curr,
+        reading: curr,
+        usage: est.usage,
+        totalAmount: est.total,
+        readingDate: Date.now(),
+        timestamp: Date.now(),
+        date: new Date().toISOString(),
+        notes: document.getElementById('waterNotesInput').value
+      };
+
+      await saveAndSyncReading(item);
+      waterPrevEl.value = curr.toFixed(1);
+      waterCurrEl.value = '';
+      document.getElementById('waterNotesInput').value = '';
+      alert('Water reading saved and synced!');
+    });
+
+    document.getElementById('btnSaveElectricity').addEventListener('click', async () => {
+      const est = calculateElecEst();
+      const prev = parseFloat(elecPrevEl.value) || 0;
+      const curr = parseFloat(elecCurrEl.value) || 0;
+      if (curr <= 0) { alert('Please enter a valid current reading.'); return; }
+
+      const item = {
+        type: 'ELECTRICITY',
+        providerName: customRates.elec.name,
+        previousReading: prev,
+        currentReading: curr,
+        reading: curr,
+        usage: est.usage,
+        totalAmount: est.total,
+        readingDate: Date.now(),
+        timestamp: Date.now(),
+        date: new Date().toISOString(),
+        notes: document.getElementById('elecNotesInput').value
+      };
+
+      await saveAndSyncReading(item);
+      elecPrevEl.value = curr.toFixed(1);
+      elecCurrEl.value = '';
+      document.getElementById('elecNotesInput').value = '';
+      alert('Electricity reading saved and synced!');
+    });
+
+    async function saveAndSyncReading(item) {
+      userReadings.push(item);
+      localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
+
+      // 1. Firebase Auth Realtime DB Sync
+      if (db && currentUser) {
+        try {
+          const { ref, push } = window.FirebaseSDK;
+          const userReadingsRef = ref(db, `users/${currentUser.uid}/readings`);
+          await push(userReadingsRef, item);
+        } catch(e) { console.error(e); }
+      }
+
+      // 2. Direct REST / JSONBin Sync (Matching Android syncToFirebase)
+      const dbUrl = document.getElementById('syncDbUrl').value.trim() || localStorage.getItem('utility_sync_url') || '';
+      if (dbUrl) {
+        try {
+          let targetUrl = dbUrl;
+          if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+            targetUrl = 'https://' + targetUrl;
+          }
+          if (!targetUrl.includes('.json')) {
+            targetUrl = targetUrl.endsWith('/') ? targetUrl + 'readings.json' : targetUrl + '/readings.json';
+          }
+          await fetch(targetUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(item)
+          });
+        } catch(err) { console.error('REST sync failed:', err); }
+      }
+    }
+
+    // 2-Way Sync Actions
+    document.getElementById('btnPullSync').addEventListener('click', async () => {
+      let dbUrl = document.getElementById('syncDbUrl').value.trim();
+      if (!dbUrl && db && currentUser) {
+        // Pull from Firebase Auth Realtime DB
+        const { ref, get } = window.FirebaseSDK;
+        const snap = await get(ref(db, `users/${currentUser.uid}/readings`));
+        if (snap.exists()) {
+          const data = snap.val();
+          userReadings = Object.entries(data).map(([id, val]) => ({ id, ...val }));
+          localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
+          renderHistory();
+          alert('Successfully pulled latest readings from Firebase!');
+          return;
+        }
+      }
+
+      if (!dbUrl) dbUrl = localStorage.getItem('utility_sync_url') || '';
+      if (!dbUrl) { alert('Please enter a Database Endpoint URL to pull from.'); return; }
+
+      localStorage.setItem('utility_sync_url', dbUrl);
+      let fetchUrl = dbUrl;
+      if (!fetchUrl.startsWith('http://') && !fetchUrl.startsWith('https://')) fetchUrl = 'https://' + fetchUrl;
+      if (!fetchUrl.includes('.json')) fetchUrl = fetchUrl.endsWith('/') ? fetchUrl + 'readings.json' : fetchUrl + '/readings.json';
+
+      try {
+        const resp = await fetch(fetchUrl);
+        const data = await resp.json();
+        if (data) {
+          const items = Array.isArray(data) ? data : Object.values(data);
+          userReadings = items;
+          localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
+          renderHistory();
+          alert('Synced successfully from cloud DB!');
+        }
+      } catch (e) {
+        alert('Failed to pull from DB: ' + e.message);
+      }
+    });
+
+    document.getElementById('btnPushSync').addEventListener('click', async () => {
+      let dbUrl = document.getElementById('syncDbUrl').value.trim() || localStorage.getItem('utility_sync_url') || '';
+      if (!dbUrl && (!db || !currentUser)) {
+        alert('Please enter a Database Endpoint URL or log in with Google to push.');
+        return;
+      }
+
+      if (dbUrl) {
+        localStorage.setItem('utility_sync_url', dbUrl);
+        let putUrl = dbUrl;
+        if (!putUrl.startsWith('http://') && !putUrl.startsWith('https://')) putUrl = 'https://' + putUrl;
+        if (!putUrl.includes('.json')) putUrl = putUrl.endsWith('/') ? putUrl + 'readings.json' : putUrl + '/readings.json';
+
+        try {
+          await fetch(putUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userReadings)
+          });
+          alert('Pushed local history to Cloud Database!');
+        } catch (e) { alert('Push failed: ' + e.message); }
+      }
+    });
+
+    function renderHistory() {
+      const historyList = document.getElementById('historyList');
+      if (userReadings.length === 0) {
+        historyList.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:20px;">No saved readings yet.</p>`;
+        return;
+      }
+
+      historyList.innerHTML = userReadings.slice().reverse().map((r, index) => {
+        const readingVal = r.currentReading || r.reading || 0;
+        const prevVal = r.previousReading || 0;
+        const dateStr = new Date(r.readingDate || r.timestamp || r.date || Date.now()).toLocaleDateString();
+        return `
+          <div class="history-item">
+            <div class="history-info">
+              <div class="history-title">${r.type === 'WATER' ? '💧 Water' : '⚡ Electricity'} - ${(r.usage || 0).toFixed(1)} ${r.type === 'WATER' ? 'm³' : 'kWh'}</div>
+              <div class="history-sub">${dateStr} | Read: ${readingVal} (Prev: ${prevVal}) | ${r.providerName || 'Default'}</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div class="history-price">$${(r.totalAmount || r.calculatedBill || 0).toFixed(2)}</div>
+              <button class="btn-delete" onclick="deleteItem(${userReadings.length - 1 - index})">
+                <span class="material-icons-round">delete</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.deleteItem = async (index) => {
+      if (!confirm('Delete this reading?')) return;
+      const itemToDelete = userReadings[index];
+      userReadings.splice(index, 1);
+      localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
+
+      if (db && currentUser && itemToDelete.id) {
+        const { ref, remove } = window.FirebaseSDK;
+        await remove(ref(db, `users/${currentUser.uid}/readings/${itemToDelete.id}`));
+      }
+      renderHistory();
+    };
+
+    // Firebase Init & Auth
+    const savedConfig = localStorage.getItem('firebase_web_config');
+    if (savedConfig) {
+      initFirebase(JSON.parse(savedConfig));
+    }
+
+    const savedSyncUrl = localStorage.getItem('utility_sync_url');
+    if (savedSyncUrl) {
+      document.getElementById('syncDbUrl').value = savedSyncUrl;
+    }
+
+    function initFirebase(config) {
+      try {
+        const { initializeApp, getAuth, GoogleAuthProvider, getDatabase, onAuthStateChanged, ref, onValue } = window.FirebaseSDK;
+        const app = initializeApp(config);
+        auth = getAuth(app);
+        db = getDatabase(app);
+
+        onAuthStateChanged(auth, (user) => {
+          currentUser = user;
+          if (user) {
+            document.getElementById('btnLoginBtn').classList.add('hidden');
+            document.getElementById('userInfo').classList.remove('hidden');
+            document.getElementById('userAvatar').src = user.photoURL || 'https://via.placeholder.com/32';
+
+            const userReadingsRef = ref(db, `users/${user.uid}/readings`);
+            onValue(userReadingsRef, (snapshot) => {
+              const data = snapshot.val();
+              userReadings = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
+              renderHistory();
+            });
+          } else {
+            document.getElementById('btnLoginBtn').classList.remove('hidden');
+            document.getElementById('userInfo').classList.add('hidden');
+            userReadings = JSON.parse(localStorage.getItem('utility_readings_local') || '[]');
+            renderHistory();
+          }
+        });
+      } catch (err) {
+        console.error('Firebase init error:', err);
+      }
+    }
+
+    document.getElementById('btnLoginBtn').addEventListener('click', async () => {
+      if (!auth) {
+        document.getElementById('configModal').classList.remove('hidden');
+        return;
+      }
+      try {
+        const { GoogleAuthProvider, signInWithPopup } = window.FirebaseSDK;
+        const provider = new GoogleAuthProvider();
+        await signInWithPopup(auth, provider);
+      } catch (e) {
+        alert('Login failed: ' + e.message);
+      }
+    });
+
+    document.getElementById('btnLogoutBtn').addEventListener('click', () => {
+      if (auth) {
+        const { signOut } = window.FirebaseSDK;
+        signOut(auth);
+      }
+    });
+
+    document.getElementById('btnCloseConfigModal').addEventListener('click', () => {
+      document.getElementById('configModal').classList.add('hidden');
+    });
+
+    document.getElementById('btnSaveFirebaseConfig').addEventListener('click', () => {
+      const text = document.getElementById('firebaseConfigText').value.trim();
+      try {
+        const config = JSON.parse(text);
+        localStorage.setItem('firebase_web_config', JSON.stringify(config));
+        document.getElementById('configModal').classList.add('hidden');
+        initFirebase(config);
+        alert('Firebase web configuration saved successfully!');
+      } catch (e) {
+        alert('Invalid JSON configuration.');
+      }
+    });
+
+    // Init display
+    updateRateLabels();
+    userReadings = JSON.parse(localStorage.getItem('utility_readings_local') || '[]');
+    renderHistory();
+  </script>
+</body>
+</html>
