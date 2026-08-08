@@ -853,7 +853,7 @@ function initFirebase(cfg) {
         if (mainContainer) mainContainer.classList.remove('hidden');
 
         const userAvatar = document.getElementById('userAvatar');
-        if (userAvatar) userAvatar.src = user.photoURL || 'https://via.placeholder.com/32';
+        if (userAvatar) userAvatar.src = user.photoURL || 'utility_icon.png';
         
         const syncStatusBanner = document.getElementById('syncStatusBanner');
         if (syncStatusBanner) {
@@ -915,25 +915,9 @@ function initFirebase(cfg) {
         });
 
       } else {
-        // If not logged in via Firebase, check if guest mode was chosen
-        const isGuest = localStorage.getItem('utility_guest_mode') === 'true';
-        if (isGuest) {
-          if (mainHeader) mainHeader.classList.remove('hidden');
-          if (authLanding) authLanding.classList.add('hidden');
-          if (mainContainer) mainContainer.classList.remove('hidden');
-
-          const userAvatar = document.getElementById('userAvatar');
-          if (userAvatar) userAvatar.src = 'https://via.placeholder.com/32/334155/f8fafc?text=G';
-
-          const syncStatusBanner = document.getElementById('syncStatusBanner');
-          if (syncStatusBanner) {
-            syncStatusBanner.innerHTML = `<span style="color:#e2e8f0; font-size:0.75rem;">Guest Mode (Local Storage). Sign in with Google to enable multi-device sync.</span>`;
-          }
-        } else {
-          if (mainHeader) mainHeader.classList.add('hidden');
-          if (authLanding) authLanding.classList.remove('hidden');
-          if (mainContainer) mainContainer.classList.add('hidden');
-        }
+        if (mainHeader) mainHeader.classList.add('hidden');
+        if (authLanding) authLanding.classList.remove('hidden');
+        if (mainContainer) mainContainer.classList.add('hidden');
 
         // Reset view to local data
         const localSaved = localStorage.getItem('utility_readings_local');
@@ -988,7 +972,7 @@ const performGoogleLogin = async () => {
       const cfgModal = document.getElementById('configModal');
       if (cfgModal) cfgModal.classList.remove('hidden');
     } else {
-      alert('Sign in note: ' + (e.message || 'Authentication error. You can also use Continue as Guest mode below.'));
+      alert('Sign in note: ' + (e.message || 'Authentication error. Please try again.'));
     }
   }
 };
@@ -998,26 +982,9 @@ if (btnMainLogin) {
   btnMainLogin.addEventListener('click', performGoogleLogin);
 }
 
-const btnGuestMode = document.getElementById('btnGuestMode');
-if (btnGuestMode) {
-  btnGuestMode.addEventListener('click', () => {
-    localStorage.setItem('utility_guest_mode', 'true');
-    const mainHeader = document.getElementById('mainHeader');
-    const authLanding = document.getElementById('authLandingScreen');
-    const mainContainer = document.getElementById('mainContainer');
-    if (mainHeader) mainHeader.classList.remove('hidden');
-    if (authLanding) authLanding.classList.add('hidden');
-    if (mainContainer) mainContainer.classList.remove('hidden');
-
-    const userAvatar = document.getElementById('userAvatar');
-    if (userAvatar) userAvatar.src = 'https://via.placeholder.com/32/334155/f8fafc?text=G';
-  });
-}
-
 const btnLogout = document.getElementById('btnLogout');
 if (btnLogout) {
   btnLogout.addEventListener('click', async () => {
-    localStorage.removeItem('utility_guest_mode');
     if (auth) {
       try {
         const { signOut } = window.FirebaseSDK;

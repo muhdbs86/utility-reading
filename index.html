@@ -7,17 +7,18 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Utility Calc">
   <meta name="theme-color" content="#0f172a">
   
-  <!-- PWA & App Icons -->
-  <link rel="icon" type="image/jpeg" href="utility_icon.jpg">
-  <link rel="apple-touch-icon" href="utility_icon.jpg">
+  <!-- Embedded Data URI Icon (No external image files needed for Favicon or Shortcuts) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='110' fill='%230f172a'/><path d='M220 120 C220 120 130 240 130 310 A90 90 0 0 0 310 310 C310 240 220 120 220 120 Z' fill='%2338bdf8'/><path d='M310 110 L215 250 L270 250 L190 400 L310 230 L255 230 Z' fill='%23f59e0b'/></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='110' fill='%230f172a'/><path d='M220 120 C220 120 130 240 130 310 A90 90 0 0 0 310 310 C310 240 220 120 220 120 Z' fill='%2338bdf8'/><path d='M310 110 L215 250 L270 250 L190 400 L310 230 L255 230 Z' fill='%23f59e0b'/></svg>">
   <link rel="manifest" href="manifest.json">
   
   <!-- Google Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 
   <!-- External Stylesheet -->
@@ -40,13 +41,17 @@
   <!-- Top App Bar (Shown when authenticated) -->
   <header class="header hidden" id="mainHeader">
     <div class="header-title" style="display:flex; align-items:center; gap:8px;">
-      <img src="utility_icon.jpg" alt="Logo" style="width:28px; height:28px; border-radius:8px; object-fit:cover;">
+      <svg width="28" height="28" viewBox="0 0 512 512" style="border-radius:8px;">
+        <rect width="512" height="512" rx="100" fill="#0f172a" stroke="#38bdf8" stroke-width="12"/>
+        <path d="M220 120 C220 120 130 240 130 310 A90 90 0 0 0 310 310 C310 240 220 120 220 120 Z" fill="#38bdf8"/>
+        <path d="M310 110 L215 250 L270 250 L190 400 L310 230 L255 230 Z" fill="#f59e0b"/>
+      </svg>
       <span>Utility Calculator</span>
     </div>
     <div class="user-profile">
       <div id="userInfo" class="user-profile">
-        <img id="userAvatar" class="user-avatar" src="" alt="Avatar">
-        <button class="btn-logout" id="btnLogout" title="Sign out / Exit Guest Mode">
+        <img id="userAvatar" class="user-avatar" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%230f172a'/><path d='M220 120 C220 120 130 240 130 310 A90 90 0 0 0 310 310 C310 240 220 120 220 120 Z' fill='%2338bdf8'/><path d='M310 110 L215 250 L270 250 L190 400 L310 230 L255 230 Z' fill='%23f59e0b'/></svg>" alt="Avatar">
+        <button class="btn-logout" id="btnLogout" title="Sign out">
           <span class="material-icons-round">logout</span>
         </button>
       </div>
@@ -57,7 +62,12 @@
   <div id="authLandingScreen" class="auth-landing-container">
     <div class="auth-landing-card">
       <div class="auth-logo-wrapper">
-        <img src="utility_icon.jpg" alt="Utility Calculator Logo" class="auth-logo-img">
+        <svg width="100%" height="100%" viewBox="0 0 512 512" style="border-radius:19px; display:block;">
+          <rect width="512" height="512" rx="100" fill="#0f172a"/>
+          <path d="M220 120 C220 120 130 240 130 310 A90 90 0 0 0 310 310 C310 240 220 120 220 120 Z" fill="#38bdf8"/>
+          <path d="M175 270 A55 55 0 0 1 215 220" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" opacity="0.35"/>
+          <path d="M310 110 L215 250 L270 250 L190 400 L310 230 L255 230 Z" fill="#f59e0b"/>
+        </svg>
       </div>
       <h1 class="auth-title">Utility Calculator</h1>
       <p class="auth-subtitle">Track, calculate, and auto-sync your Singapore water and electricity utility bills in real-time.</p>
@@ -77,7 +87,7 @@
         </div>
       </div>
 
-      <button id="btnMainLogin" class="btn-google-signin" style="margin-bottom:10px;">
+      <button id="btnMainLogin" class="btn-google-signin">
         <svg width="20" height="20" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -85,10 +95,6 @@
           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
         </svg>
         Sign in with Google
-      </button>
-
-      <button id="btnGuestMode" style="width:100%; background:rgba(255,255,255,0.08); color:#f8fafc; border:1px solid rgba(255,255,255,0.2); padding:11px; border-radius:12px; font-weight:600; font-size:0.88rem; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
-        <span class="material-icons-round" style="font-size:18px;">person_outline</span> Continue as Guest (Local Storage)
       </button>
     </div>
   </div>
