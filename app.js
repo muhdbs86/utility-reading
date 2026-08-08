@@ -103,40 +103,45 @@ function saveProvidersState() {
   calculateElecEst();
 }
 
+// Fixed Provider Reordering Logic (Swaps items directly in providersList)
 window.moveProviderUp = function(id) {
-  const p = providersList.find(x => x.id === id);
-  if (!p) return;
-  const sameType = providersList.filter(x => x.type === p.type);
-  const idx = sameType.findIndex(x => x.id === id);
-  if (idx > 0) {
-    const temp = sameType[idx];
-    sameType[idx] = sameType[idx - 1];
-    sameType[idx - 1] = temp;
+  const currIdx = providersList.findIndex(x => x.id === id);
+  if (currIdx <= 0) return;
+  const targetType = providersList[currIdx].type;
 
-    const refuse = p.type === 'REFUSE' ? sameType : providersList.filter(x => x.type === 'REFUSE');
-    const elec = p.type === 'ELECTRICITY' ? sameType : providersList.filter(x => x.type === 'ELECTRICITY');
-    const water = p.type === 'WATER' ? sameType : providersList.filter(x => x.type === 'WATER');
-    providersList = [...refuse, ...elec, ...water];
+  let prevIdx = -1;
+  for (let i = currIdx - 1; i >= 0; i--) {
+    if (providersList[i].type === targetType) {
+      prevIdx = i;
+      break;
+    }
+  }
 
+  if (prevIdx !== -1) {
+    const temp = providersList[currIdx];
+    providersList[currIdx] = providersList[prevIdx];
+    providersList[prevIdx] = temp;
     saveProvidersState();
   }
 };
 
 window.moveProviderDown = function(id) {
-  const p = providersList.find(x => x.id === id);
-  if (!p) return;
-  const sameType = providersList.filter(x => x.type === p.type);
-  const idx = sameType.findIndex(x => x.id === id);
-  if (idx !== -1 && idx < sameType.length - 1) {
-    const temp = sameType[idx];
-    sameType[idx] = sameType[idx + 1];
-    sameType[idx + 1] = temp;
+  const currIdx = providersList.findIndex(x => x.id === id);
+  if (currIdx === -1 || currIdx >= providersList.length - 1) return;
+  const targetType = providersList[currIdx].type;
 
-    const refuse = p.type === 'REFUSE' ? sameType : providersList.filter(x => x.type === 'REFUSE');
-    const elec = p.type === 'ELECTRICITY' ? sameType : providersList.filter(x => x.type === 'ELECTRICITY');
-    const water = p.type === 'WATER' ? sameType : providersList.filter(x => x.type === 'WATER');
-    providersList = [...refuse, ...elec, ...water];
+  let nextIdx = -1;
+  for (let i = currIdx + 1; i < providersList.length; i++) {
+    if (providersList[i].type === targetType) {
+      nextIdx = i;
+      break;
+    }
+  }
 
+  if (nextIdx !== -1) {
+    const temp = providersList[currIdx];
+    providersList[currIdx] = providersList[nextIdx];
+    providersList[nextIdx] = temp;
     saveProvidersState();
   }
 };
@@ -853,7 +858,7 @@ function initFirebase(cfg) {
         if (mainContainer) mainContainer.classList.remove('hidden');
 
         const userAvatar = document.getElementById('userAvatar');
-        if (userAvatar) userAvatar.src = user.photoURL || 'utility_icon.png';
+        if (userAvatar) userAvatar.src = user.photoURL || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="100" fill="%230f172a"/><path d="M220 120 C220 120 130 240 130 310 A90 90 0 0 0 310 310 C310 240 220 120 220 120 Z" fill="%2338bdf8"/><path d="M310 110 L215 250 L270 250 L190 400 L310 230 L255 230 Z" fill="%23f59e0b"/></svg>';
         
         const syncStatusBanner = document.getElementById('syncStatusBanner');
         if (syncStatusBanner) {
