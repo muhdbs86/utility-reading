@@ -549,6 +549,114 @@
     .btn-icon-action.text-danger:hover {
       background: #fef2f2;
     }
+
+    /* Auth Landing Screen */
+    .auth-landing-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: calc(100vh - 100px);
+      padding: 24px 16px;
+    }
+
+    .auth-landing-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 36px 28px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 12px 30px -5px rgba(0,0,0,0.35);
+    }
+
+    .auth-logo-circle {
+      width: 80px;
+      height: 80px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 2px solid rgba(56, 189, 248, 0.3);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px auto;
+    }
+
+    .auth-title {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 8px;
+    }
+
+    .auth-subtitle {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+
+    .auth-features {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 24px;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .auth-feature-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.85rem;
+      color: #e2e8f0;
+    }
+
+    .btn-google-signin {
+      background: #ffffff;
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 0.95rem;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 20px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      margin-bottom: 12px;
+    }
+
+    .btn-google-signin:hover {
+      background: #f8fafc;
+      transform: translateY(-1px);
+    }
+
+    .btn-guest-continue {
+      background: transparent;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 10px 16px;
+      border-radius: 12px;
+      width: 100%;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-guest-continue:hover {
+      background: rgba(255,255,255,0.05);
+      color: #f8fafc;
+    }
   </style>
 </head>
 <body>
@@ -572,7 +680,47 @@
     </div>
   </header>
 
-  <main class="container">
+  <!-- Login Landing View (Shown when not authenticated) -->
+  <div id="authLandingScreen" class="auth-landing-container">
+    <div class="auth-landing-card">
+      <div class="auth-logo-circle">
+        <span class="material-icons-round" style="font-size: 44px; color: #38bdf8;">analytics</span>
+      </div>
+      <h1 class="auth-title">Utility Calculator</h1>
+      <p class="auth-subtitle">Track, calculate, and auto-sync your Singapore water and electricity utility bills in real-time.</p>
+      
+      <div class="auth-features">
+        <div class="auth-feature-item">
+          <span class="material-icons-round" style="color: #38bdf8;">water_drop</span>
+          <span>PUB Tiered & Flat Water Rates</span>
+        </div>
+        <div class="auth-feature-item">
+          <span class="material-icons-round" style="color: #f59e0b;">bolt</span>
+          <span>Electricity & Refuse Charges</span>
+        </div>
+        <div class="auth-feature-item">
+          <span class="material-icons-round" style="color: #10b981;">cloud_sync</span>
+          <span>Real-time Multi-Device Cloud Sync</span>
+        </div>
+      </div>
+
+      <button id="btnMainLogin" class="btn-google-signin">
+        <svg width="20" height="20" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+        </svg>
+        Sign in with Google
+      </button>
+
+      <button id="btnGuestContinue" class="btn-guest-continue">
+        Continue without signing in
+      </button>
+    </div>
+  </div>
+
+  <main id="mainContainer" class="container hidden">
 
     <!-- Screen Tabs Navigation -->
     <div class="type-selector">
@@ -739,35 +887,12 @@
 
     <!-- History & 2-Way Sync Screen -->
     <div id="sectionHistory" class="tab-section hidden">
-      <!-- Sync Config Card -->
-      <div class="card">
-        <div class="card-title">
-          <span class="material-icons-round" style="color:#10b981;">sync</span> Real-time Firebase Cloud Sync
-        </div>
-        <div id="syncStatusBanner" style="margin-bottom: 12px; padding: 8px 12px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 10px; font-size: 0.76rem;">
-          <span style="color:#e2e8f0;">Sign in with Google to enable real-time cloud sync across devices.</span>
-        </div>
-        <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">
-          Database Endpoint URL (Integrated):
-        </p>
-        
-        <div class="form-group">
-          <label class="form-label">Database Endpoint URL / Firebase URL</label>
-          <input type="text" id="syncDbUrl" class="form-input" value="https://utility-reading-default-rtdb.asia-southeast1.firebasedatabase.app" placeholder="https://utility-reading-default-rtdb.asia-southeast1.firebasedatabase.app">
-        </div>
-
-        <div style="display:flex; gap:8px;">
-          <button class="btn-submit btn-secondary" id="btnPullSync" style="flex:1; margin-top:0;">
-            <span class="material-icons-round">cloud_download</span> Pull Latest
-          </button>
-          <button class="btn-submit" id="btnPushSync" style="flex:1; margin-top:0;">
-            <span class="material-icons-round">cloud_upload</span> Push Local
-          </button>
-        </div>
+      <div id="syncStatusBanner" style="margin-bottom: 12px; padding: 10px 14px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 12px; font-size: 0.78rem;">
+        <span style="color:#e2e8f0;">Sign in with Google to enable real-time cloud sync across devices.</span>
       </div>
 
       <div class="card">
-        <div class="card-title">📜 Saved Readings History (By Month Cycle)</div>
+        <div class="card-title">📜 Saved Readings History</div>
         <div id="historyList">
           <p style="text-align:center; color:var(--text-muted); padding:16px; font-size:0.8rem;">No saved readings found.</p>
         </div>
@@ -946,41 +1071,10 @@
     let userReadings = [];
 
     // Providers List State
-    let providersList = JSON.parse(localStorage.getItem('utility_providers')) || [
-      {
-        id: 'p_refuse_1',
-        type: 'REFUSE',
-        name: 'Alba W&H Smart City P L',
-        fee: 9.76,
-        gst: 9.0,
-        isDefault: true
-      },
-      {
-        id: 'p_elec_1',
-        type: 'ELECTRICITY',
-        name: 'Tuas Power Supply Pte Ltd',
-        tariff: 0.2324,
-        gst: 9.0,
-        isDefault: true
-      },
-      {
-        id: 'p_water_1',
-        type: 'WATER',
-        name: 'SP PUB',
-        model: 'SG_TIERED',
-        t1Tariff: 1.210,
-        t1Wct: 0.720,
-        t1Wbf: 1.090,
-        t2Tariff: 1.810,
-        t2Wct: 1.180,
-        t2Wbf: 1.400,
-        flatRate: 1.200,
-        gst: 9.0,
-        isDefault: true
-      }
-    ];
+    let providersList = JSON.parse(localStorage.getItem('utility_providers')) || [];
 
-    let cycleStartDay = parseInt(localStorage.getItem('utility_cycle_start_day'), 10) || 28;
+    let elecCycleStartDay = parseInt(localStorage.getItem('utility_elec_cycle_start_day'), 10) || 28;
+    let waterCycleStartDay = parseInt(localStorage.getItem('utility_water_cycle_start_day'), 10) || 28;
 
     function getActiveProvider(type) {
       const match = providersList.find(p => p.type === type && p.isDefault);
@@ -988,20 +1082,21 @@
       const fallback = providersList.find(p => p.type === type);
       if (fallback) return fallback;
       if (type === 'WATER') {
-        return { name: 'SP PUB', model: 'SG_TIERED', t1Tariff: 1.21, t1Wct: 0.72, t1Wbf: 1.09, t2Tariff: 1.81, t2Wct: 1.18, t2Wbf: 1.40, flatRate: 1.20, gst: 9.0 };
+        return { name: 'No Provider Set', model: 'SG_TIERED', t1Tariff: 0, t1Wct: 0, t1Wbf: 0, t2Tariff: 0, t2Wct: 0, t2Wbf: 0, flatRate: 0, gst: 0 };
       }
       if (type === 'ELECTRICITY') {
-        return { name: 'Tuas Power Supply', tariff: 0.2324, gst: 9.0 };
+        return { name: 'No Provider Set', tariff: 0, gst: 0 };
       }
-      return { name: 'Alba W&H', fee: 9.76, gst: 9.0 };
+      return { name: 'No Provider Set', fee: 0, gst: 0 };
     }
 
     // Helper: Default start of cycle date calculation
-    function getDefaultCycleStartDate() {
+    function getDefaultCycleStartDate(type = 'WATER') {
+      const cycleDay = type === 'ELECTRICITY' ? elecCycleStartDay : waterCycleStartDay;
       const today = new Date();
       let year = today.getFullYear();
       let month = today.getMonth();
-      if (today.getDate() < cycleStartDay) {
+      if (today.getDate() < cycleDay) {
         month -= 1;
         if (month < 0) {
           month = 11;
@@ -1010,22 +1105,23 @@
       }
       const yyyy = year;
       const mm = String(month + 1).padStart(2, '0');
-      const dd = String(cycleStartDay).padStart(2, '0');
+      const dd = String(cycleDay).padStart(2, '0');
       return `${yyyy}-${mm}-${dd}`;
     }
 
     function updateCycleLabels() {
-      const dayStr = `${cycleStartDay}${cycleStartDay === 1 ? 'st' : cycleStartDay === 2 ? 'nd' : cycleStartDay === 3 ? 'rd' : 'th'}`;
+      const elecDayStr = `${elecCycleStartDay}${elecCycleStartDay === 1 ? 'st' : elecCycleStartDay === 2 ? 'nd' : elecCycleStartDay === 3 ? 'rd' : 'th'}`;
+      const waterDayStr = `${waterCycleStartDay}${waterCycleStartDay === 1 ? 'st' : waterCycleStartDay === 2 ? 'nd' : waterCycleStartDay === 3 ? 'rd' : 'th'}`;
+      
       const elecLabel = document.getElementById('elecCycleStartDayLabel');
       const waterLabel = document.getElementById('waterCycleStartDayLabel');
-      if (elecLabel) elecLabel.innerText = dayStr;
-      if (waterLabel) waterLabel.innerText = dayStr;
+      if (elecLabel) elecLabel.innerText = elecDayStr;
+      if (waterLabel) waterLabel.innerText = waterDayStr;
       
-      const defaultDate = getDefaultCycleStartDate();
       const waterInput = document.getElementById('waterCycleStartInput');
       const elecInput = document.getElementById('elecCycleStartInput');
-      if (waterInput) waterInput.value = defaultDate;
-      if (elecInput) elecInput.value = defaultDate;
+      if (waterInput && !waterInput.value) waterInput.value = getDefaultCycleStartDate('WATER');
+      if (elecInput && !elecInput.value) elecInput.value = getDefaultCycleStartDate('ELECTRICITY');
     }
 
     function updateRateLabels() {
@@ -1037,7 +1133,7 @@
 
       if (waterLbl) waterLbl.innerText = `${waterP.name} (${(waterP.model === 'SG_TIERED' || waterP.model === 'TIERED') ? 'Tiered' : 'Flat'})`;
       if (elecLbl) elecLbl.innerText = `${elecP.name} (Flat)`;
-      if (elecTariffLbl) elecTariffLbl.innerText = `$${(elecP.tariff || 0.2324).toFixed(4)} / kWh`;
+      if (elecTariffLbl) elecTariffLbl.innerText = `$${(elecP.tariff || 0).toFixed(4)} / kWh`;
     }
 
     function renderProviderActionControls(p, idx, totalItems) {
@@ -1080,11 +1176,15 @@
       const sameType = providersList.filter(x => x.type === p.type);
       const idx = sameType.findIndex(x => x.id === id);
       if (idx > 0) {
-        const prevP = sameType[idx - 1];
-        const mainIdxCurr = providersList.findIndex(x => x.id === id);
-        const mainIdxPrev = providersList.findIndex(x => x.id === prevP.id);
-        providersList[mainIdxCurr] = prevP;
-        providersList[mainIdxPrev] = p;
+        const temp = sameType[idx];
+        sameType[idx] = sameType[idx - 1];
+        sameType[idx - 1] = temp;
+
+        const refuse = p.type === 'REFUSE' ? sameType : providersList.filter(x => x.type === 'REFUSE');
+        const elec = p.type === 'ELECTRICITY' ? sameType : providersList.filter(x => x.type === 'ELECTRICITY');
+        const water = p.type === 'WATER' ? sameType : providersList.filter(x => x.type === 'WATER');
+        providersList = [...refuse, ...elec, ...water];
+
         saveProvidersState();
       }
     };
@@ -1095,11 +1195,15 @@
       const sameType = providersList.filter(x => x.type === p.type);
       const idx = sameType.findIndex(x => x.id === id);
       if (idx !== -1 && idx < sameType.length - 1) {
-        const nextP = sameType[idx + 1];
-        const mainIdxCurr = providersList.findIndex(x => x.id === id);
-        const mainIdxNext = providersList.findIndex(x => x.id === nextP.id);
-        providersList[mainIdxCurr] = nextP;
-        providersList[mainIdxNext] = p;
+        const temp = sameType[idx];
+        sameType[idx] = sameType[idx + 1];
+        sameType[idx + 1] = temp;
+
+        const refuse = p.type === 'REFUSE' ? sameType : providersList.filter(x => x.type === 'REFUSE');
+        const elec = p.type === 'ELECTRICITY' ? sameType : providersList.filter(x => x.type === 'ELECTRICITY');
+        const water = p.type === 'WATER' ? sameType : providersList.filter(x => x.type === 'WATER');
+        providersList = [...refuse, ...elec, ...water];
+
         saveProvidersState();
       }
     };
@@ -1115,12 +1219,14 @@
       const elecItems = providersList.filter(p => p.type === 'ELECTRICITY');
       const waterItems = providersList.filter(p => p.type === 'WATER');
 
-      refuseList.innerHTML = refuseItems.map((p, idx) => `
+      refuseList.innerHTML = refuseItems.length === 0 
+        ? `<p style="font-size:0.75rem; color:var(--text-muted); font-style:italic; padding:4px 0;">No refuse providers added.</p>`
+        : refuseItems.map((p, idx) => `
         <div class="provider-card-ui">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <div style="display:flex; align-items:center; gap:6px;">
-              <strong style="font-size:0.92rem; color:#0f172a;">${p.name}</strong>
-              ${p.isDefault ? '<span class="badge-default">★ Default</span>' : ''}
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+            <div style="display:flex; flex-direction:column; gap:2px;">
+              <strong style="font-size:0.78rem; font-weight:700; color:#0f172a; line-height:1.2;">${p.name}</strong>
+              ${p.isDefault ? '<div style="margin-top:2px;"><span class="badge-default">★ Default</span></div>' : ''}
             </div>
             ${renderProviderActionControls(p, idx, refuseItems.length)}
           </div>
@@ -1131,12 +1237,14 @@
         </div>
       `).join('');
 
-      elecList.innerHTML = elecItems.map((p, idx) => `
+      elecList.innerHTML = elecItems.length === 0 
+        ? `<p style="font-size:0.75rem; color:var(--text-muted); font-style:italic; padding:4px 0;">No electricity providers added.</p>`
+        : elecItems.map((p, idx) => `
         <div class="provider-card-ui">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <div style="display:flex; align-items:center; gap:6px;">
-              <strong style="font-size:0.92rem; color:#0f172a;">${p.name}</strong>
-              ${p.isDefault ? '<span class="badge-default">★ Default</span>' : ''}
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+            <div style="display:flex; flex-direction:column; gap:2px;">
+              <strong style="font-size:0.78rem; font-weight:700; color:#0f172a; line-height:1.2;">${p.name}</strong>
+              ${p.isDefault ? '<div style="margin-top:2px;"><span class="badge-default">★ Default</span></div>' : ''}
             </div>
             ${renderProviderActionControls(p, idx, elecItems.length)}
           </div>
@@ -1147,33 +1255,35 @@
         </div>
       `).join('');
 
-      waterList.innerHTML = waterItems.map((p, idx) => {
+      waterList.innerHTML = waterItems.length === 0 
+        ? `<p style="font-size:0.75rem; color:var(--text-muted); font-style:italic; padding:4px 0;">No water providers added.</p>`
+        : waterItems.map((p, idx) => {
         if (p.model === 'FLAT') {
           return `
             <div class="provider-card-ui">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <div style="display:flex; align-items:center; gap:6px;">
-                  <strong style="font-size:0.92rem; color:#0f172a;">${p.name}</strong>
-                  ${p.isDefault ? '<span class="badge-default">★ Default</span>' : ''}
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                <div style="display:flex; flex-direction:column; gap:2px;">
+                  <strong style="font-size:0.78rem; font-weight:700; color:#0f172a; line-height:1.2;">${p.name}</strong>
+                  ${p.isDefault ? '<div style="margin-top:2px;"><span class="badge-default">★ Default</span></div>' : ''}
                 </div>
                 ${renderProviderActionControls(p, idx, waterItems.length)}
               </div>
               <div style="background:#f8fafc; padding:8px 10px; border-radius:10px; font-size:0.76rem;">
                 <div class="card-row-item"><span>Rate Model</span><strong>Flat Rate</strong></div>
-                <div class="card-row-item"><span>Usage Fee</span><strong>S$${(p.flatRate || 1.20).toFixed(4)} / m³</strong></div>
+                <div class="card-row-item"><span>Usage Fee</span><strong>S$${(p.flatRate || 0).toFixed(4)} / m³</strong></div>
                 <div class="card-row-item"><span>GST</span><strong>${(p.gst || 0).toFixed(1)}%</strong></div>
               </div>
             </div>
           `;
         }
-        const t1Total = (p.t1Tariff || 1.21) + (p.t1Wct || 0.72) + (p.t1Wbf || 1.09);
-        const t2Total = (p.t2Tariff || 1.81) + (p.t2Wct || 1.18) + (p.t2Wbf || 1.40);
+        const t1Total = (p.t1Tariff || 0) + (p.t1Wct || 0) + (p.t1Wbf || 0);
+        const t2Total = (p.t2Tariff || 0) + (p.t2Wct || 0) + (p.t2Wbf || 0);
         return `
           <div class="provider-card-ui">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <div style="display:flex; align-items:center; gap:6px;">
-                <strong style="font-size:0.92rem; color:#0f172a;">${p.name}</strong>
-                ${p.isDefault ? '<span class="badge-default">★ Default</span>' : ''}
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <strong style="font-size:0.78rem; font-weight:700; color:#0f172a; line-height:1.2;">${p.name}</strong>
+                ${p.isDefault ? '<div style="margin-top:2px;"><span class="badge-default">★ Default</span></div>' : ''}
               </div>
               ${renderProviderActionControls(p, idx, waterItems.length)}
             </div>
@@ -1185,10 +1295,10 @@
                   <strong>S$${t1Total.toFixed(4)} / m³</strong>
                 </div>
                 <div class="card-row-item" style="padding-left:12px; color:#64748b;">
-                  <span>└ Waterborne Tax (WBF)</span><span>S$${(p.t1Wbf || 1.09).toFixed(4)} / m³</span>
+                  <span>└ Waterborne Tax (WBF)</span><span>S$${(p.t1Wbf || 0).toFixed(4)} / m³</span>
                 </div>
                 <div class="card-row-item" style="padding-left:12px; color:#64748b;">
-                  <span>└ Water Conservation Tax (WCT)</span><span>S$${(p.t1Wct || 0.72).toFixed(4)} / m³</span>
+                  <span>└ Water Conservation Tax (WCT)</span><span>S$${(p.t1Wct || 0).toFixed(4)} / m³</span>
                 </div>
               </div>
               <div style="margin-top:4px;">
@@ -1197,10 +1307,10 @@
                   <strong>S$${t2Total.toFixed(4)} / m³</strong>
                 </div>
                 <div class="card-row-item" style="padding-left:12px; color:#64748b;">
-                  <span>└ Waterborne Tax (WBF)</span><span>S$${(p.t2Wbf || 1.40).toFixed(4)} / m³</span>
+                  <span>└ Waterborne Tax (WBF)</span><span>S$${(p.t2Wbf || 0).toFixed(4)} / m³</span>
                 </div>
                 <div class="card-row-item" style="padding-left:12px; color:#64748b;">
-                  <span>└ Water Conservation Tax (WCT)</span><span>S$${(p.t2Wct || 1.18).toFixed(4)} / m³</span>
+                  <span>└ Water Conservation Tax (WCT)</span><span>S$${(p.t2Wct || 0).toFixed(4)} / m³</span>
                 </div>
               </div>
               <div class="card-row-item" style="margin-top:4px;"><span>GST</span><strong>${(p.gst || 0).toFixed(1)}%</strong></div>
@@ -1485,19 +1595,30 @@
     });
 
     // Cycle Day Steppers
-    const handleCycleStep = (delta) => {
-      cycleStartDay += delta;
-      if (cycleStartDay < 1) cycleStartDay = 31;
-      if (cycleStartDay > 31) cycleStartDay = 1;
-      localStorage.setItem('utility_cycle_start_day', cycleStartDay.toString());
+    document.getElementById('btnElecCycleMinus').addEventListener('click', () => {
+      elecCycleStartDay = elecCycleStartDay <= 1 ? 31 : elecCycleStartDay - 1;
+      localStorage.setItem('utility_elec_cycle_start_day', elecCycleStartDay.toString());
       updateCycleLabels();
       syncCycleToFirebase();
-    };
-
-    document.getElementById('btnElecCycleMinus').addEventListener('click', () => handleCycleStep(-1));
-    document.getElementById('btnElecCyclePlus').addEventListener('click', () => handleCycleStep(1));
-    document.getElementById('btnWaterCycleMinus').addEventListener('click', () => handleCycleStep(-1));
-    document.getElementById('btnWaterCyclePlus').addEventListener('click', () => handleCycleStep(1));
+    });
+    document.getElementById('btnElecCyclePlus').addEventListener('click', () => {
+      elecCycleStartDay = elecCycleStartDay >= 31 ? 1 : elecCycleStartDay + 1;
+      localStorage.setItem('utility_elec_cycle_start_day', elecCycleStartDay.toString());
+      updateCycleLabels();
+      syncCycleToFirebase();
+    });
+    document.getElementById('btnWaterCycleMinus').addEventListener('click', () => {
+      waterCycleStartDay = waterCycleStartDay <= 1 ? 31 : waterCycleStartDay - 1;
+      localStorage.setItem('utility_water_cycle_start_day', waterCycleStartDay.toString());
+      updateCycleLabels();
+      syncCycleToFirebase();
+    });
+    document.getElementById('btnWaterCyclePlus').addEventListener('click', () => {
+      waterCycleStartDay = waterCycleStartDay >= 31 ? 1 : waterCycleStartDay + 1;
+      localStorage.setItem('utility_water_cycle_start_day', waterCycleStartDay.toString());
+      updateCycleLabels();
+      syncCycleToFirebase();
+    });
 
     // Tab Navigation
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1539,7 +1660,10 @@
       if (db && currentUser) {
         try {
           const { ref, set } = window.FirebaseSDK;
-          await set(ref(db, `users/${currentUser.uid}/cycleStartDay`), cycleStartDay);
+          await set(ref(db, `users/${currentUser.uid}/cycles`), {
+            elecCycleStartDay,
+            waterCycleStartDay
+          });
         } catch(e) { console.error('Failed auto-syncing cycle:', e); }
       }
     }
@@ -1551,7 +1675,7 @@
       const curr = parseFloat(waterCurrEl.value) || 0;
       if (curr <= 0) { alert('Please enter a valid current reading.'); return; }
 
-      const cycleDate = document.getElementById('waterCycleStartInput').value || getDefaultCycleStartDate();
+      const cycleDate = document.getElementById('waterCycleStartInput').value || getDefaultCycleStartDate('WATER');
       const activeWaterP = getActiveProvider('WATER');
 
       const item = {
@@ -1581,7 +1705,7 @@
       const curr = parseFloat(elecCurrEl.value) || 0;
       if (curr <= 0) { alert('Please enter a valid current reading.'); return; }
 
-      const cycleDate = document.getElementById('elecCycleStartInput').value || getDefaultCycleStartDate();
+      const cycleDate = document.getElementById('elecCycleStartInput').value || getDefaultCycleStartDate('ELECTRICITY');
       const activeElecP = getActiveProvider('ELECTRICITY');
 
       const item = {
@@ -1613,201 +1737,48 @@
       }
 
       await syncReadingsToFirebase();
-
-      const dbUrl = document.getElementById('syncDbUrl').value.trim() || localStorage.getItem('utility_sync_url') || '';
-      if (dbUrl) {
-        try {
-          let targetUrl = dbUrl;
-          if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
-            targetUrl = 'https://' + targetUrl;
-          }
-          if (!targetUrl.includes('.json')) {
-            targetUrl = targetUrl.endsWith('/') ? targetUrl + 'readings.json' : targetUrl + '/readings.json';
-          }
-          await fetch(targetUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(item)
-          });
-        } catch(err) { console.error('REST sync failed:', err); }
-      }
-    }
-
-    // 2-Way Sync Actions
-    document.getElementById('btnPullSync').addEventListener('click', async () => {
-      let dbUrl = document.getElementById('syncDbUrl').value.trim();
-      if (!dbUrl && db && currentUser) {
-        const { ref, get } = window.FirebaseSDK;
-        const snap = await get(ref(db, `users/${currentUser.uid}/readings`));
-        if (snap.exists()) {
-          const data = snap.val();
-          userReadings = Object.entries(data).map(([id, val]) => ({ id, ...val }));
-          localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
-          renderHistory();
-          alert('Successfully pulled latest readings from Firebase!');
-          return;
-        }
-      }
-
-      if (!dbUrl) dbUrl = localStorage.getItem('utility_sync_url') || '';
-      if (!dbUrl) { alert('Please enter a Database Endpoint URL to pull from.'); return; }
-
-      localStorage.setItem('utility_sync_url', dbUrl);
-      let fetchUrl = dbUrl;
-      if (!fetchUrl.startsWith('http://') && !fetchUrl.startsWith('https://')) fetchUrl = 'https://' + fetchUrl;
-      if (!fetchUrl.includes('.json')) fetchUrl = fetchUrl.endsWith('/') ? fetchUrl + 'readings.json' : fetchUrl + '/readings.json';
-
-      try {
-        const resp = await fetch(fetchUrl);
-        const data = await resp.json();
-        if (data) {
-          const items = Array.isArray(data) ? data : Object.values(data);
-          userReadings = items;
-          localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
-          renderHistory();
-          alert('Synced successfully from cloud DB!');
-        }
-      } catch (e) {
-        alert('Failed to pull from DB: ' + e.message);
-      }
-    });
-
-    document.getElementById('btnPushSync').addEventListener('click', async () => {
-      let dbUrl = document.getElementById('syncDbUrl').value.trim() || localStorage.getItem('utility_sync_url') || '';
-      if (!dbUrl && (!db || !currentUser)) {
-        alert('Please enter a Database Endpoint URL or log in with Google to push.');
-        return;
-      }
-
-      if (dbUrl) {
-        localStorage.setItem('utility_sync_url', dbUrl);
-        let putUrl = dbUrl;
-        if (!putUrl.startsWith('http://') && !putUrl.startsWith('https://')) putUrl = 'https://' + putUrl;
-        if (!putUrl.includes('.json')) putUrl = putUrl.endsWith('/') ? putUrl + 'readings.json' : putUrl + '/readings.json';
-
-        try {
-          await fetch(putUrl, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(userReadings)
-          });
-          alert('Pushed local history to Cloud Database!');
-        } catch (e) { alert('Push failed: ' + e.message); }
-      }
-    });
-
-    // Helper: Cycle date formatter
-    function formatCycleRange(startDateStr) {
-      if (!startDateStr) return 'Uncategorized Cycle';
-      const parts = startDateStr.split('-');
-      if (parts.length !== 3) return startDateStr;
-      
-      const year = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1;
-      const day = parseInt(parts[2], 10);
-      
-      const start = new Date(year, month, day);
-      const end = new Date(year, month + 1, day - 1);
-
-      const startMonth = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      const endMonth = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      return `${startMonth} - ${endMonth}`;
     }
 
     function renderHistory() {
       const historyList = document.getElementById('historyList');
+      if (!historyList) return;
       if (userReadings.length === 0) {
         historyList.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:16px; font-size:0.78rem;">No saved readings found.</p>`;
         return;
       }
 
-      // Group readings by cycle
-      const cyclesMap = {};
-      userReadings.forEach((r, idx) => {
-        let cycleKey = r.cycleStartDate;
-        if (!cycleKey) {
-          const rd = new Date(r.readingDate || r.timestamp || Date.now());
-          let y = rd.getFullYear();
-          let m = rd.getMonth();
-          if (rd.getDate() < 28) {
-            m -= 1;
-            if (m < 0) { m = 11; y -= 1; }
-          }
-          cycleKey = `${y}-${String(m + 1).padStart(2, '0')}-28`;
-        }
+      const sortedReadings = [...userReadings].sort((a, b) => (b.readingDate || b.timestamp || 0) - (a.readingDate || a.timestamp || 0));
+
+      historyList.innerHTML = sortedReadings.map((item) => {
+        const originalIndex = userReadings.indexOf(item);
+        const readingVal = item.currentReading || item.reading || 0;
+        const prevVal = item.previousReading || 0;
+        const dateStr = new Date(item.readingDate || item.timestamp || Date.now()).toLocaleDateString('en-SG', { year: 'numeric', month: 'short', day: 'numeric' });
+        const cycleStr = item.cycleStartDate ? ` (Cycle: ${item.cycleStartDate})` : '';
         
-        if (!cyclesMap[cycleKey]) {
-          cyclesMap[cycleKey] = [];
-        }
-        cyclesMap[cycleKey].push({ item: r, originalIndex: idx });
-      });
-
-      const defaultRefuseProvider = getActiveProvider('REFUSE');
-      const refuseBase = defaultRefuseProvider.fee || 9.76;
-      const refuseGst = defaultRefuseProvider.gst || 9.0;
-      const refuseFee = refuseBase * (1 + refuseGst / 100);
-      const sortedCycles = Object.keys(cyclesMap).sort().reverse();
-
-      let html = '';
-      sortedCycles.forEach(cycleKey => {
-        const readingsGroup = cyclesMap[cycleKey];
-        const cycleLabel = formatCycleRange(cycleKey);
-
-        let waterTotal = 0;
-        let elecTotal = 0;
-
-        readingsGroup.forEach(({ item }) => {
-          const amt = item.totalAmount || item.calculatedBill || 0;
-          if (item.type === 'WATER') waterTotal += amt;
-          if (item.type === 'ELECTRICITY') elecTotal += amt;
-        });
-
-        const monthCycleTotal = waterTotal + elecTotal + refuseFee;
-
-        html += `
-          <div class="cycle-card">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--card-border); padding-bottom:6px; margin-bottom:8px;">
-              <div style="font-weight:700; font-size:0.8rem; color:#38bdf8; display:flex; align-items:center; gap:4px;">
-                <span class="material-icons-round" style="font-size:16px;">date_range</span>
-                Cycle: ${cycleLabel}
+        return `
+          <div class="history-item" style="padding:12px; margin-bottom:8px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:12px; display:flex; justify-content:space-between; align-items:center;">
+            <div class="history-info">
+              <div style="font-weight:700; font-size:0.82rem; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+                ${item.type === 'WATER' ? '<span style="color:#38bdf8;">💧 Water</span>' : '<span style="color:#f59e0b;">⚡ Electricity</span>'} 
+                <span style="font-weight:600; color:#e2e8f0;">- ${(item.usage || 0).toFixed(1)} ${item.type === 'WATER' ? 'm³' : 'kWh'}</span>
               </div>
-              <div style="font-weight:700; font-size:0.88rem; color:#10b981;">
-                S$${monthCycleTotal.toFixed(2)}
+              <div style="color:var(--text-muted); font-size:0.72rem; margin-top:2px;">
+                ${dateStr}${cycleStr} • ${prevVal} ➔ ${readingVal}
+              </div>
+              <div style="color:#64748b; font-size:0.7rem; margin-top:1px;">
+                Provider: ${item.providerName || 'Default'}
               </div>
             </div>
-
-            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px; background:#1e293b; padding:6px; border-radius:6px; margin-bottom:8px; font-size:0.72rem;">
-              <div>💧 Water: <strong style="color:white;">$${waterTotal.toFixed(2)}</strong></div>
-              <div>⚡ Elec: <strong style="color:white;">$${elecTotal.toFixed(2)}</strong></div>
-              <div>🗑️ Refuse: <strong style="color:white;">$${refuseFee.toFixed(2)}</strong></div>
-            </div>
-
-            <div>
-              ${readingsGroup.map(({ item, originalIndex }) => {
-                const readingVal = item.currentReading || item.reading || 0;
-                const prevVal = item.previousReading || 0;
-                const dateStr = new Date(item.readingDate || item.timestamp || Date.now()).toLocaleDateString();
-                return `
-                  <div class="history-item">
-                    <div class="history-info">
-                      <div style="font-weight:600; color:var(--text-main);">${item.type === 'WATER' ? '💧 Water' : '⚡ Electricity'} - ${(item.usage || 0).toFixed(1)} ${item.type === 'WATER' ? 'm³' : 'kWh'}</div>
-                      <div style="color:var(--text-muted); font-size:0.7rem;">${dateStr} | ${prevVal} ➔ ${readingVal} | ${item.providerName || 'Default'}</div>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:6px;">
-                      <span style="font-weight:600; font-size:0.8rem; color:var(--text-main);">$${(item.totalAmount || item.calculatedBill || 0).toFixed(2)}</span>
-                      <button class="btn-delete" onclick="deleteItem(${originalIndex})">
-                        <span class="material-icons-round">delete</span>
-                      </button>
-                    </div>
-                  </div>
-                `;
-              }).join('')}
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-weight:800; font-size:0.88rem; color:#10b981;">S$${(item.totalAmount || item.calculatedBill || 0).toFixed(2)}</span>
+              <button class="btn-delete" onclick="window.deleteItem(${originalIndex})" title="Delete Reading">
+                <span class="material-icons-round" style="font-size:18px;">delete</span>
+              </button>
             </div>
           </div>
         `;
-      });
-
-      historyList.innerHTML = html;
+      }).join('');
     }
 
     window.deleteItem = async (index) => {
@@ -1854,6 +1825,7 @@
     let readingsUnsub = null;
     let providersUnsub = null;
     let cycleUnsub = null;
+    let isGuestMode = false;
 
     initFirebase(activeConfig);
 
@@ -1880,7 +1852,13 @@
 
         onAuthStateChanged(auth, (user) => {
           currentUser = user;
+          const authLanding = document.getElementById('authLandingScreen');
+          const mainContainer = document.getElementById('mainContainer');
+
           if (user) {
+            if (authLanding) authLanding.classList.add('hidden');
+            if (mainContainer) mainContainer.classList.remove('hidden');
+
             document.getElementById('btnLogin').classList.add('hidden');
             document.getElementById('userInfo').classList.remove('hidden');
             document.getElementById('userAvatar').src = user.photoURL || 'https://via.placeholder.com/32';
@@ -1914,31 +1892,45 @@
               if (snapshot.exists()) {
                 const data = snapshot.val();
                 providersList = Array.isArray(data) ? data : Object.values(data);
-                localStorage.setItem(`utility_providers_${user.uid}`, JSON.stringify(providersList));
-                localStorage.setItem('utility_providers', JSON.stringify(providersList));
-                renderProviders();
-                updateRateLabels();
-                calculateWaterEst();
-                calculateElecEst();
               } else {
+                providersList = [];
                 syncProvidersToFirebase();
               }
+              localStorage.setItem(`utility_providers_${user.uid}`, JSON.stringify(providersList));
+              localStorage.setItem('utility_providers', JSON.stringify(providersList));
+              renderProviders();
+              updateRateLabels();
+              calculateWaterEst();
+              calculateElecEst();
             });
 
-            // Real-time listener for User Cycle Start Day (isolated per user UID)
-            const userCycleRef = ref(db, `users/${user.uid}/cycleStartDay`);
+            // Real-time listener for User Cycle Start Days (isolated per user UID)
+            const userCycleRef = ref(db, `users/${user.uid}/cycles`);
             if (cycleUnsub) cycleUnsub();
             cycleUnsub = onValue(userCycleRef, (snapshot) => {
               if (snapshot.exists()) {
-                cycleStartDay = snapshot.val();
-                localStorage.setItem('utility_cycle_start_day', cycleStartDay.toString());
-                updateCycleLabels();
+                const cyclesData = snapshot.val();
+                if (cyclesData) {
+                  if (cyclesData.elecCycleStartDay) elecCycleStartDay = cyclesData.elecCycleStartDay;
+                  if (cyclesData.waterCycleStartDay) waterCycleStartDay = cyclesData.waterCycleStartDay;
+                  localStorage.setItem('utility_elec_cycle_start_day', elecCycleStartDay.toString());
+                  localStorage.setItem('utility_water_cycle_start_day', waterCycleStartDay.toString());
+                  updateCycleLabels();
+                }
               } else {
                 syncCycleToFirebase();
               }
             });
 
           } else {
+            if (isGuestMode) {
+              if (authLanding) authLanding.classList.add('hidden');
+              if (mainContainer) mainContainer.classList.remove('hidden');
+            } else {
+              if (authLanding) authLanding.classList.remove('hidden');
+              if (mainContainer) mainContainer.classList.add('hidden');
+            }
+
             document.getElementById('btnLogin').classList.remove('hidden');
             document.getElementById('userInfo').classList.add('hidden');
             const syncStatusBanner = document.getElementById('syncStatusBanner');
@@ -1964,7 +1956,7 @@
       }
     }
 
-    document.getElementById('btnLogin').addEventListener('click', async () => {
+    const performGoogleLogin = async () => {
       if (!auth) {
         const success = initFirebase(activeConfig);
         if (!success || !auth) {
@@ -1985,12 +1977,36 @@
           alert('Sign in note: ' + e.message);
         }
       }
-    });
+    };
+
+    document.getElementById('btnLogin').addEventListener('click', performGoogleLogin);
+
+    const btnMainLogin = document.getElementById('btnMainLogin');
+    if (btnMainLogin) {
+      btnMainLogin.addEventListener('click', performGoogleLogin);
+    }
+
+    const btnGuestContinue = document.getElementById('btnGuestContinue');
+    if (btnGuestContinue) {
+      btnGuestContinue.addEventListener('click', () => {
+        isGuestMode = true;
+        const authLanding = document.getElementById('authLandingScreen');
+        const mainContainer = document.getElementById('mainContainer');
+        if (authLanding) authLanding.classList.add('hidden');
+        if (mainContainer) mainContainer.classList.remove('hidden');
+      });
+    }
 
     document.getElementById('btnLogout').addEventListener('click', async () => {
+      isGuestMode = false;
       if (auth) {
         const { signOut } = window.FirebaseSDK;
         await signOut(auth);
+      } else {
+        const authLanding = document.getElementById('authLandingScreen');
+        const mainContainer = document.getElementById('mainContainer');
+        if (authLanding) authLanding.classList.remove('hidden');
+        if (mainContainer) mainContainer.classList.add('hidden');
       }
     });
 
