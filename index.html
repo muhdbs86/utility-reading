@@ -9,6 +9,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0f172a">
   
+  <!-- PWA & App Icons -->
+  <link rel="icon" type="image/jpeg" href="utility_icon.jpg">
+  <link rel="apple-touch-icon" href="utility_icon.jpg">
+  <link rel="manifest" href="manifest.json">
+  
   <!-- Google Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -550,43 +555,62 @@
       background: #fef2f2;
     }
 
-    /* Auth Landing Screen */
+    .header.hidden {
+      display: none !important;
+    }
+
+    /* Auth Landing Screen - Full Page */
     .auth-landing-container {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: calc(100vh - 100px);
+      min-height: 100vh;
+      width: 100vw;
       padding: 24px 16px;
+      background: radial-gradient(circle at 50% 30%, #1e293b 0%, #0b1329 100%);
+      overflow-y: auto;
     }
 
     .auth-landing-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 20px;
-      padding: 36px 28px;
-      max-width: 440px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
+      padding: 40px 28px;
+      max-width: 420px;
       width: 100%;
       text-align: center;
-      box-shadow: 0 12px 30px -5px rgba(0,0,0,0.35);
+      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6), 0 0 30px rgba(56, 189, 248, 0.15);
     }
 
-    .auth-logo-circle {
-      width: 80px;
-      height: 80px;
-      background: rgba(56, 189, 248, 0.12);
-      border: 2px solid rgba(56, 189, 248, 0.3);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 20px auto;
+    .auth-logo-wrapper {
+      width: 96px;
+      height: 96px;
+      border-radius: 22px;
+      padding: 3px;
+      background: linear-gradient(135deg, #38bdf8, #818cf8, #f59e0b);
+      margin: 0 auto 24px auto;
+      box-shadow: 0 8px 24px rgba(56, 189, 248, 0.35);
+    }
+
+    .auth-logo-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 19px;
+      display: block;
     }
 
     .auth-title {
-      font-size: 1.6rem;
+      font-size: 1.65rem;
       font-weight: 800;
       color: #f8fafc;
       margin-bottom: 8px;
+      letter-spacing: -0.02em;
     }
 
     .auth-subtitle {
@@ -623,7 +647,7 @@
       font-size: 0.95rem;
       border: none;
       border-radius: 12px;
-      padding: 12px 20px;
+      padding: 13px 20px;
       width: 100%;
       display: flex;
       align-items: center;
@@ -631,49 +655,28 @@
       gap: 10px;
       cursor: pointer;
       transition: all 0.2s;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      margin-bottom: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
     }
 
     .btn-google-signin:hover {
       background: #f8fafc;
       transform: translateY(-1px);
-    }
-
-    .btn-guest-continue {
-      background: transparent;
-      border: 1px solid var(--card-border);
-      color: var(--text-muted);
-      font-size: 0.82rem;
-      font-weight: 600;
-      padding: 10px 16px;
-      border-radius: 12px;
-      width: 100%;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .btn-guest-continue:hover {
-      background: rgba(255,255,255,0.05);
-      color: #f8fafc;
+      box-shadow: 0 6px 20px rgba(255,255,255,0.25);
     }
   </style>
 </head>
 <body>
 
-  <!-- Top App Bar -->
-  <header class="header">
-    <div class="header-title">
-      <span class="material-icons-round" style="color:#38bdf8;">analytics</span>
-      Utility Calculator
+  <!-- Top App Bar (Shown when authenticated) -->
+  <header class="header hidden" id="mainHeader">
+    <div class="header-title" style="display:flex; align-items:center; gap:8px;">
+      <img src="utility_icon.jpg" alt="Logo" style="width:28px; height:28px; border-radius:8px; object-fit:cover;">
+      <span>Utility Calculator</span>
     </div>
     <div class="user-profile">
-      <button class="btn-login" id="btnLogin">
-        <span class="material-icons-round">login</span> <span id="loginBtnText">Sign In</span>
-      </button>
-      <div id="userInfo" class="user-profile hidden">
+      <div id="userInfo" class="user-profile">
         <img id="userAvatar" class="user-avatar" src="" alt="Avatar">
-        <button class="btn-logout" id="btnLogout">
+        <button class="btn-logout" id="btnLogout" title="Sign out">
           <span class="material-icons-round">logout</span>
         </button>
       </div>
@@ -683,8 +686,8 @@
   <!-- Login Landing View (Shown when not authenticated) -->
   <div id="authLandingScreen" class="auth-landing-container">
     <div class="auth-landing-card">
-      <div class="auth-logo-circle">
-        <span class="material-icons-round" style="font-size: 44px; color: #38bdf8;">analytics</span>
+      <div class="auth-logo-wrapper">
+        <img src="utility_icon.jpg" alt="Utility Calculator Logo" class="auth-logo-img">
       </div>
       <h1 class="auth-title">Utility Calculator</h1>
       <p class="auth-subtitle">Track, calculate, and auto-sync your Singapore water and electricity utility bills in real-time.</p>
@@ -712,10 +715,6 @@
           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
         </svg>
         Sign in with Google
-      </button>
-
-      <button id="btnGuestContinue" class="btn-guest-continue">
-        Continue without signing in
       </button>
     </div>
   </div>
@@ -1852,16 +1851,17 @@
 
         onAuthStateChanged(auth, (user) => {
           currentUser = user;
+          const mainHeader = document.getElementById('mainHeader');
           const authLanding = document.getElementById('authLandingScreen');
           const mainContainer = document.getElementById('mainContainer');
 
           if (user) {
+            if (mainHeader) mainHeader.classList.remove('hidden');
             if (authLanding) authLanding.classList.add('hidden');
             if (mainContainer) mainContainer.classList.remove('hidden');
 
-            document.getElementById('btnLogin').classList.add('hidden');
-            document.getElementById('userInfo').classList.remove('hidden');
-            document.getElementById('userAvatar').src = user.photoURL || 'https://via.placeholder.com/32';
+            const userAvatar = document.getElementById('userAvatar');
+            if (userAvatar) userAvatar.src = user.photoURL || 'https://via.placeholder.com/32';
             
             const syncStatusBanner = document.getElementById('syncStatusBanner');
             if (syncStatusBanner) {
@@ -1923,16 +1923,10 @@
             });
 
           } else {
-            if (isGuestMode) {
-              if (authLanding) authLanding.classList.add('hidden');
-              if (mainContainer) mainContainer.classList.remove('hidden');
-            } else {
-              if (authLanding) authLanding.classList.remove('hidden');
-              if (mainContainer) mainContainer.classList.add('hidden');
-            }
+            if (mainHeader) mainHeader.classList.add('hidden');
+            if (authLanding) authLanding.classList.remove('hidden');
+            if (mainContainer) mainContainer.classList.add('hidden');
 
-            document.getElementById('btnLogin').classList.remove('hidden');
-            document.getElementById('userInfo').classList.add('hidden');
             const syncStatusBanner = document.getElementById('syncStatusBanner');
             if (syncStatusBanner) {
               syncStatusBanner.innerHTML = `<span style="color:#e2e8f0; font-size:0.75rem;">Sign in with Google to enable real-time cloud sync across devices.</span>`;
@@ -1979,35 +1973,22 @@
       }
     };
 
-    document.getElementById('btnLogin').addEventListener('click', performGoogleLogin);
-
     const btnMainLogin = document.getElementById('btnMainLogin');
     if (btnMainLogin) {
       btnMainLogin.addEventListener('click', performGoogleLogin);
     }
 
-    const btnGuestContinue = document.getElementById('btnGuestContinue');
-    if (btnGuestContinue) {
-      btnGuestContinue.addEventListener('click', () => {
-        isGuestMode = true;
-        const authLanding = document.getElementById('authLandingScreen');
-        const mainContainer = document.getElementById('mainContainer');
-        if (authLanding) authLanding.classList.add('hidden');
-        if (mainContainer) mainContainer.classList.remove('hidden');
-      });
-    }
-
     document.getElementById('btnLogout').addEventListener('click', async () => {
-      isGuestMode = false;
       if (auth) {
         const { signOut } = window.FirebaseSDK;
         await signOut(auth);
-      } else {
-        const authLanding = document.getElementById('authLandingScreen');
-        const mainContainer = document.getElementById('mainContainer');
-        if (authLanding) authLanding.classList.remove('hidden');
-        if (mainContainer) mainContainer.classList.add('hidden');
       }
+      const mainHeader = document.getElementById('mainHeader');
+      const authLanding = document.getElementById('authLandingScreen');
+      const mainContainer = document.getElementById('mainContainer');
+      if (mainHeader) mainHeader.classList.add('hidden');
+      if (authLanding) authLanding.classList.remove('hidden');
+      if (mainContainer) mainContainer.classList.add('hidden');
     });
 
     document.getElementById('btnCloseConfigModal').addEventListener('click', () => {
