@@ -18,7 +18,7 @@
   padding: 0;
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
+  touch-action: manipulation !important;
 }
 
 html, body {
@@ -27,14 +27,14 @@ html, body {
   padding-bottom: 70px;
   min-height: 100vh;
   font-size: 0.85rem;
-  touch-action: manipulation;
+  touch-action: manipulation !important;
   -webkit-text-size-adjust: 100%;
 }
 
 /* Prevent auto zoom-in on all mobile inputs across all tabs */
 input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   font-size: 16px !important; /* Mobile browsers auto-zoom if font-size < 16px */
-  touch-action: manipulation;
+  touch-action: manipulation !important;
 }
 
 .material-icons-round {
@@ -89,6 +89,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   display: flex;
   align-items: center;
   gap: 4px;
+  touch-action: manipulation !important;
 }
 
 .btn-logout {
@@ -129,7 +130,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   gap: 4px;
   white-space: nowrap;
   transition: all 0.2s;
-  touch-action: manipulation;
+  touch-action: manipulation !important;
 }
 
 .tab-btn.active {
@@ -144,6 +145,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   border-radius: 12px;
   padding: 12px 14px;
   margin-bottom: 12px;
+  touch-action: manipulation !important;
 }
 
 .card-title {
@@ -230,7 +232,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  touch-action: manipulation;
+  touch-action: manipulation !important;
 }
 
 .btn-submit:hover {
@@ -293,7 +295,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   padding: 2px;
   display: flex;
   align-items: center;
-  touch-action: manipulation;
+  touch-action: manipulation !important;
 }
 
 /* Configure Provider Modal & Card Styling */
@@ -379,7 +381,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   justify-content: center;
   gap: 4px;
   transition: all 0.2s;
-  touch-action: manipulation;
+  touch-action: manipulation !important;
 }
 
 .type-chip.active-elec {
@@ -414,7 +416,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   font-size: 0.78rem;
   border-radius: 8px;
   cursor: pointer;
-  touch-action: manipulation;
+  touch-action: manipulation !important;
 }
 
 .model-btn.active {
@@ -440,7 +442,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   font-weight: 700;
   font-size: 0.82rem;
   cursor: pointer;
-  touch-action: manipulation;
+  touch-action: manipulation !important;
 }
 
 .modal-btn-save {
@@ -453,7 +455,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   font-weight: 700;
   font-size: 0.82rem;
   cursor: pointer;
-  touch-action: manipulation;
+  touch-action: manipulation !important;
 }
 
 .provider-card-ui {
@@ -463,6 +465,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   padding: 14px;
   margin-bottom: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  touch-action: manipulation !important;
 }
 
 .badge-default {
@@ -498,7 +501,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   cursor: pointer;
   transition: all 0.2s;
   padding: 0;
-  touch-action: manipulation;
+  touch-action: manipulation !important;
 }
 
 .btn-reorder:hover:not([disabled]) {
@@ -524,7 +527,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   cursor: pointer;
   transition: all 0.2s;
   padding: 0;
-  touch-action: manipulation;
+  touch-action: manipulation !important;
 }
 
 .btn-icon-action:hover {
@@ -640,7 +643,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   cursor: pointer;
   transition: all 0.2s;
   box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-  touch-action: manipulation;
+  touch-action: manipulation !important;
 }
 
 .btn-google-signin:hover {
