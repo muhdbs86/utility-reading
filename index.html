@@ -932,13 +932,23 @@
       renderHistory();
     };
 
+    // Default User Provided Firebase Config
+    const defaultFirebaseConfig = {
+      apiKey: "AIzaSyD7ILTXVKJ2Cd1KYALBHhllipzXNJqmG0c",
+      authDomain: "utility-reading.firebaseapp.com",
+      databaseURL: "https://utility-reading-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "utility-reading",
+      storageBucket: "utility-reading.firebasestorage.app",
+      messagingSenderId: "361617071162",
+      appId: "1:361617071162:web:9619065ad4e76407efa903"
+    };
+
     // Firebase Init & Auth
     const savedConfig = localStorage.getItem('firebase_web_config');
-    if (savedConfig) {
-      initFirebase(JSON.parse(savedConfig));
-    }
+    const activeConfig = savedConfig ? JSON.parse(savedConfig) : defaultFirebaseConfig;
+    initFirebase(activeConfig);
 
-    const savedSyncUrl = localStorage.getItem('utility_sync_url');
+    const savedSyncUrl = localStorage.getItem('utility_sync_url') || defaultFirebaseConfig.databaseURL;
     if (savedSyncUrl) {
       document.getElementById('syncDbUrl').value = savedSyncUrl;
     }
