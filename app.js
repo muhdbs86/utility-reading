@@ -25,6 +25,55 @@ let providersList = JSON.parse(localStorage.getItem('utility_providers')) || [];
 let elecCycleStartDay = parseInt(localStorage.getItem('utility_elec_cycle_start_day'), 10) || 28;
 let waterCycleStartDay = parseInt(localStorage.getItem('utility_water_cycle_start_day'), 10) || 28;
 
+// Define Move Functions Globally at Top Level so HTML Onclick works instantly
+window.moveProviderUp = function(id) {
+  const item = providersList.find(x => x.id === id);
+  if (!item) return;
+  const targetType = item.type;
+  const sameType = providersList.filter(p => p.type === targetType);
+  const idx = sameType.findIndex(x => x.id === id);
+  
+  if (idx > 0) {
+    const temp = sameType[idx];
+    sameType[idx] = sameType[idx - 1];
+    sameType[idx - 1] = temp;
+
+    let stIdx = 0;
+    providersList = providersList.map(p => {
+      if (p.type === targetType) {
+        return sameType[stIdx++];
+      }
+      return p;
+    });
+
+    saveProvidersState();
+  }
+};
+
+window.moveProviderDown = function(id) {
+  const item = providersList.find(x => x.id === id);
+  if (!item) return;
+  const targetType = item.type;
+  const sameType = providersList.filter(p => p.type === targetType);
+  const idx = sameType.findIndex(x => x.id === id);
+  
+  if (idx !== -1 && idx < sameType.length - 1) {
+    const temp = sameType[idx];
+    sameType[idx] = sameType[idx + 1];
+    sameType[idx + 1] = temp;
+
+    let stIdx = 0;
+    providersList = providersList.map(p => {
+      if (p.type === targetType) {
+        return sameType[stIdx++];
+      }
+      return p;
+    });
+
+    saveProvidersState();
+  }
+};
+
 function getActiveProvider(type) {
   const match = providersList.find(p => p.type === type && p.isDefault);
   if (match) return match;
@@ -89,6 +138,43 @@ function getReadingCycleInfo(dateMs, cycleDay = 28) {
   return { monthName, year, month, rangeStr };
 }
 
+// Auto-fill Previous Reading from History
+function autofillLatestReadings() {
+  if (!userReadings || userReadings.length === 0) return;
+
+  const waterPrevInput = document.getElementById('waterPrevInput');
+  const elecPrevInput = document.getElementById('elecPrevInput');
+
+  // Find most recent Water reading
+  const waterReadings = userReadings
+    .filter(r => r.type === 'WATER' && (r.currentReading !== undefined || r.reading !== undefined))
+    .sort((a, b) => (b.readingDate || b.timestamp || 0) - (a.readingDate || a.timestamp || 0));
+
+  if (waterReadings.length > 0 && waterPrevInput) {
+    const latestWater = waterReadings[0];
+    const val = latestWater.currentReading !== undefined ? latestWater.currentReading : latestWater.reading;
+    if (val !== undefined && val !== null) {
+      waterPrevInput.value = parseFloat(val).toFixed(4);
+    }
+  }
+
+  // Find most recent Electricity reading
+  const elecReadings = userReadings
+    .filter(r => r.type === 'ELECTRICITY' && (r.currentReading !== undefined || r.reading !== undefined))
+    .sort((a, b) => (b.readingDate || b.timestamp || 0) - (a.readingDate || a.timestamp || 0));
+
+  if (elecReadings.length > 0 && elecPrevInput) {
+    const latestElec = elecReadings[0];
+    const val = latestElec.currentReading !== undefined ? latestElec.currentReading : latestElec.reading;
+    if (val !== undefined && val !== null) {
+      elecPrevInput.value = parseFloat(val).toString();
+    }
+  }
+
+  calculateWaterEst();
+  calculateElecEst();
+}
+
 function updateCycleLabels() {
   const elecDayStr = `${elecCycleStartDay}${elecCycleStartDay === 1 ? 'st' : elecCycleStartDay === 2 ? 'nd' : elecCycleStartDay === 3 ? 'rd' : 'th'}`;
   const waterDayStr = `${waterCycleStartDay}${waterCycleStartDay === 1 ? 'st' : waterCycleStartDay === 2 ? 'nd' : waterCycleStartDay === 3 ? 'rd' : 'th'}`;
@@ -149,55 +235,6 @@ function saveProvidersState() {
   calculateWaterEst();
   calculateElecEst();
 }
-
-// Fixed Provider Reordering Logic (Category-isolated element replacement)
-window.moveProviderUp = function(id) {
-  const item = providersList.find(x => x.id === id);
-  if (!item) return;
-  const targetType = item.type;
-  const sameType = providersList.filter(p => p.type === targetType);
-  const idx = sameType.findIndex(x => x.id === id);
-  
-  if (idx > 0) {
-    const temp = sameType[idx];
-    sameType[idx] = sameType[idx - 1];
-    sameType[idx - 1] = temp;
-
-    let stIdx = 0;
-    providersList = providersList.map(p => {
-      if (p.type === targetType) {
-        return sameType[stIdx++];
-      }
-      return p;
-    });
-
-    saveProvidersState();
-  }
-};
-
-window.moveProviderDown = function(id) {
-  const item = providersList.find(x => x.id === id);
-  if (!item) return;
-  const targetType = item.type;
-  const sameType = providersList.filter(p => p.type === targetType);
-  const idx = sameType.findIndex(x => x.id === id);
-  
-  if (idx !== -1 && idx < sameType.length - 1) {
-    const temp = sameType[idx];
-    sameType[idx] = sameType[idx + 1];
-    sameType[idx + 1] = temp;
-
-    let stIdx = 0;
-    providersList = providersList.map(p => {
-      if (p.type === targetType) {
-        return sameType[stIdx++];
-      }
-      return p;
-    });
-
-    saveProvidersState();
-  }
-};
 
 function renderProviders() {
   const refuseList = document.getElementById('refuseProvidersList');
@@ -785,13 +822,14 @@ async function saveAndSyncReading(item) {
   }
 
   await syncReadingsToFirebase();
+  autofillLatestReadings();
   renderHistory();
 }
 
 // Modal state for Detailed Breakdown
 let activeBreakdownGroupKey = null;
 
-// RENDER NEW HISTORY SCREEN (Matching User Screenshots)
+// RENDER HISTORY SCREEN
 function renderHistory() {
   const historyList = document.getElementById('historyList');
   if (!historyList) return;
@@ -799,10 +837,8 @@ function renderHistory() {
   const refuseP = getActiveProvider('REFUSE');
   const refuseFee = (refuseP.fee || 9.76) * (1 + ((refuseP.gst || 9.0) / 100));
 
-  // Current Active Cycle Info
   const currentCycleInfo = getReadingCycleInfo(Date.now(), waterCycleStartDay);
   
-  // Group readings by Billing Cycle Period
   const cycleGroups = {};
   
   userReadings.forEach(item => {
@@ -828,7 +864,6 @@ function renderHistory() {
     }
   });
 
-  // Ensure current cycle exists in cycleGroups
   if (!cycleGroups[currentCycleInfo.monthName]) {
     cycleGroups[currentCycleInfo.monthName] = {
       key: currentCycleInfo.monthName,
@@ -840,13 +875,11 @@ function renderHistory() {
     };
   }
 
-  // Calculate current cycle metrics
   const currGroup = cycleGroups[currentCycleInfo.monthName];
   const currElecTotal = currGroup.elec.reduce((s, x) => s + (x.totalAmount || 0), 0);
   const currWaterTotal = currGroup.water.reduce((s, x) => s + (x.totalAmount || 0), 0);
   const currCycleGrandTotal = currElecTotal + currWaterTotal + refuseFee;
 
-  // Build Top Current Cycle Monitor Card
   let html = `
     <!-- Top Current Cycle Monitor Banner -->
     <div class="current-cycle-card">
@@ -883,7 +916,6 @@ function renderHistory() {
     </div>
   `;
 
-  // Sort groups descending by date
   const sortedKeys = Object.keys(cycleGroups).sort((a, b) => {
     return (cycleGroups[b].year * 12 + cycleGroups[b].month) - (cycleGroups[a].year * 12 + cycleGroups[a].month);
   });
@@ -951,6 +983,7 @@ function renderHistory() {
   }
 
   historyList.innerHTML = html;
+  autofillLatestReadings();
 }
 
 // Open Detailed Breakdown Modal
@@ -1116,6 +1149,7 @@ window.deleteReadingItem = async function(id) {
   await syncReadingsToFirebase();
   renderHistory();
   renderBreakdownModalContent();
+  autofillLatestReadings();
 };
 
 window.closeBreakdownModal = function() {
@@ -1173,6 +1207,7 @@ if (localSaved) {
 renderProviders();
 updateRateLabels();
 updateCycleLabels();
+autofillLatestReadings();
 
 function initFirebase(cfg) {
   try {
@@ -1219,6 +1254,7 @@ function initFirebase(cfg) {
             localStorage.setItem(`utility_readings_${user.uid}`, JSON.stringify(userReadings));
             localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
             renderHistory();
+            autofillLatestReadings();
           }
         });
 
@@ -1268,6 +1304,7 @@ function initFirebase(cfg) {
         const localSaved = localStorage.getItem('utility_readings_local');
         try { userReadings = localSaved ? JSON.parse(localSaved) : []; } catch(e) {}
         renderHistory();
+        autofillLatestReadings();
 
         const localProv = localStorage.getItem('utility_providers');
         try { if (localProv) providersList = JSON.parse(localProv); } catch(e) {}
