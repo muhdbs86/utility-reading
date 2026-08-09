@@ -107,6 +107,15 @@ function getDefaultCycleStartDate(type = 'WATER') {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+// Format date explicitly as DD/MM/YYYY
+function formatDateDMY(dateMs) {
+  const dt = new Date(dateMs || Date.now());
+  const dd = String(dt.getDate()).padStart(2, '0');
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const yyyy = dt.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
 function getReadingCycleInfo(dateMs, cycleDay = 28) {
   const dt = new Date(dateMs || Date.now());
   let year = dt.getFullYear();
@@ -132,42 +141,68 @@ function getReadingCycleInfo(dateMs, cycleDay = 28) {
   }
   const endDate = new Date(endYear, endMonth, cycleDay - 1);
   
-  const formatShort = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const rangeStr = `${formatShort(startDate)} - ${formatShort(endDate)}`;
+  const rangeStr = `${formatDateDMY(startDate.getTime())} - ${formatDateDMY(endDate.getTime())}`;
   
   return { monthName, year, month, rangeStr };
 }
 
-// Auto-fill Previous Reading from History
+// Auto-fill Previous Reading from History & Local Storage (Persistent & Sticky)
 function autofillLatestReadings() {
-  if (!userReadings || userReadings.length === 0) return;
-
   const waterPrevInput = document.getElementById('waterPrevInput');
   const elecPrevInput = document.getElementById('elecPrevInput');
 
-  // Find most recent Water reading
-  const waterReadings = userReadings
-    .filter(r => r.type === 'WATER' && (r.currentReading !== undefined || r.reading !== undefined))
-    .sort((a, b) => (b.readingDate || b.timestamp || 0) - (a.readingDate || a.timestamp || 0));
+  let waterVal = localStorage.getItem('utility_last_water_reading') || '';
+  if (currentUser) {
+    const userWater = localStorage.getItem(`utility_last_water_reading_${currentUser.uid}`);
+    if (userWater) waterVal = userWater;
+  }
 
-  if (waterReadings.length > 0 && waterPrevInput) {
-    const latestWater = waterReadings[0];
-    const val = latestWater.currentReading !== undefined ? latestWater.currentReading : latestWater.reading;
-    if (val !== undefined && val !== null) {
-      waterPrevInput.value = parseFloat(val).toFixed(4);
+  let elecVal = localStorage.getItem('utility_last_elec_reading') || '';
+  if (currentUser) {
+    const userElec = localStorage.getItem(`utility_last_elec_reading_${currentUser.uid}`);
+    if (userElec) elecVal = userElec;
+  }
+
+  // Check userReadings for latest entry (highest priority)
+  if (userReadings && userReadings.length > 0) {
+    const waterReadings = userReadings
+      .filter(r => r.type === 'WATER' && (r.currentReading !== undefined || r.reading !== undefined))
+      .sort((a, b) => (b.readingDate || b.timestamp || 0) - (a.readingDate || a.timestamp || 0));
+
+    if (waterReadings.length > 0) {
+      const latest = waterReadings[0];
+      const v = latest.currentReading !== undefined ? latest.currentReading : latest.reading;
+      if (v !== undefined && v !== null && v !== '') {
+        waterVal = v;
+      }
+    }
+
+    const elecReadings = userReadings
+      .filter(r => r.type === 'ELECTRICITY' && (r.currentReading !== undefined || r.reading !== undefined))
+      .sort((a, b) => (b.readingDate || b.timestamp || 0) - (a.readingDate || a.timestamp || 0));
+
+    if (elecReadings.length > 0) {
+      const latest = elecReadings[0];
+      const v = latest.currentReading !== undefined ? latest.currentReading : latest.reading;
+      if (v !== undefined && v !== null && v !== '') {
+        elecVal = v;
+      }
     }
   }
 
-  // Find most recent Electricity reading
-  const elecReadings = userReadings
-    .filter(r => r.type === 'ELECTRICITY' && (r.currentReading !== undefined || r.reading !== undefined))
-    .sort((a, b) => (b.readingDate || b.timestamp || 0) - (a.readingDate || a.timestamp || 0));
+  if (waterVal !== '' && waterVal !== null && waterPrevInput) {
+    waterPrevInput.value = parseFloat(waterVal).toFixed(4);
+    localStorage.setItem('utility_last_water_reading', waterVal.toString());
+    if (currentUser) {
+      localStorage.setItem(`utility_last_water_reading_${currentUser.uid}`, waterVal.toString());
+    }
+  }
 
-  if (elecReadings.length > 0 && elecPrevInput) {
-    const latestElec = elecReadings[0];
-    const val = latestElec.currentReading !== undefined ? latestElec.currentReading : latestElec.reading;
-    if (val !== undefined && val !== null) {
-      elecPrevInput.value = parseFloat(val).toString();
+  if (elecVal !== '' && elecVal !== null && elecPrevInput) {
+    elecPrevInput.value = parseFloat(elecVal).toString();
+    localStorage.setItem('utility_last_elec_reading', elecVal.toString());
+    if (currentUser) {
+      localStorage.setItem(`utility_last_elec_reading_${currentUser.uid}`, elecVal.toString());
     }
   }
 
@@ -778,6 +813,8 @@ if (btnSaveW) btnSaveW.addEventListener('click', async () => {
 
   await saveAndSyncReading(item);
   if (waterPrevEl) waterPrevEl.value = curr.toFixed(4);
+  localStorage.setItem('utility_last_water_reading', curr.toString());
+  if (currentUser) localStorage.setItem(`utility_last_water_reading_${currentUser.uid}`, curr.toString());
   if (waterCurrEl) waterCurrEl.value = '';
   alert('Water reading saved and synced!');
 });
@@ -810,6 +847,8 @@ if (btnSaveE) btnSaveE.addEventListener('click', async () => {
 
   await saveAndSyncReading(item);
   if (elecPrevEl) elecPrevEl.value = curr.toString();
+  localStorage.setItem('utility_last_elec_reading', curr.toString());
+  if (currentUser) localStorage.setItem(`utility_last_elec_reading_${currentUser.uid}`, curr.toString());
   if (elecCurrEl) elecCurrEl.value = '';
   alert('Electricity reading saved and synced!');
 });
@@ -1065,7 +1104,7 @@ function renderBreakdownModalContent() {
           ${elecItems.length === 0 ? '<p style="font-size:0.72rem; color:#94a3b8; font-style:italic;">No electricity entries.</p>' : elecItems.map(item => `
             <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:0.74rem;">
               <div>
-                <span style="color:#0f172a; font-weight:700;">${new Date(item.readingDate || item.timestamp).toLocaleDateString()}</span>
+                <span style="color:#0f172a; font-weight:700;">${formatDateDMY(item.readingDate || item.timestamp)}</span>
                 <span style="color:#64748b; margin-left:6px;">(${item.previousReading} ➔ ${item.currentReading})</span>
               </div>
               <div style="display:flex; align-items:center; gap:8px;">
@@ -1108,7 +1147,7 @@ function renderBreakdownModalContent() {
           ${waterItems.length === 0 ? '<p style="font-size:0.72rem; color:#94a3b8; font-style:italic;">No water entries.</p>' : waterItems.map(item => `
             <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:0.74rem;">
               <div>
-                <span style="color:#0f172a; font-weight:700;">${new Date(item.readingDate || item.timestamp).toLocaleDateString()}</span>
+                <span style="color:#0f172a; font-weight:700;">${formatDateDMY(item.readingDate || item.timestamp)}</span>
                 <span style="color:#64748b; margin-left:6px;">(${item.previousReading} ➔ ${item.currentReading})</span>
               </div>
               <div style="display:flex; align-items:center; gap:8px;">
