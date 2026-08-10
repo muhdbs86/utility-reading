@@ -125,11 +125,11 @@
         <div class="grid-2">
           <div class="form-group">
             <label class="form-label">Previous Reading (m³)</label>
-            <input type="text" id="waterPrevInput" class="form-input" inputmode="numeric" placeholder="0.0000">
+            <input type="text" id="waterPrevInput" class="form-input" inputmode="numeric" placeholder="0.000">
           </div>
           <div class="form-group">
             <label class="form-label">Current Reading (m³)</label>
-            <input type="text" id="waterCurrInput" class="form-input" inputmode="numeric" placeholder="Auto 4-decimal">
+            <input type="text" id="waterCurrInput" class="form-input" inputmode="numeric" placeholder="e.g. 1234.567">
           </div>
         </div>
 
@@ -215,9 +215,14 @@
         <p style="font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">UTILITY MONITOR</p>
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <h2 style="font-size: 0.98rem; font-weight: 800; color: var(--text-main);">Utility Providers & Rates Settings</h2>
-          <button type="button" id="btnOpenAddProvider" style="background: #0f172a; border: 1px solid var(--card-border); color: white; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.78rem; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.2);">
-            <span class="material-icons-round" style="font-size: 16px;">add</span> Add
-          </button>
+          <div style="display:flex; gap:6px;">
+            <button type="button" id="btnOpenReorderModal" style="background: #0f172a; border: 1px solid var(--card-border); color: white; padding: 6px 12px; border-radius: 20px; font-weight: 700; font-size: 0.78rem; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.2);">
+              <span class="material-icons-round" style="font-size: 16px;">swap_vert</span> Reorder
+            </button>
+            <button type="button" id="btnOpenAddProvider" style="background: #0f172a; border: 1px solid var(--card-border); color: white; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.78rem; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.2);">
+              <span class="material-icons-round" style="font-size: 16px;">add</span> Add
+            </button>
+          </div>
         </div>
       </div>
 
@@ -291,6 +296,32 @@
       </div>
 
       <div id="breakdownContent"></div>
+    </div>
+  </div>
+
+  <!-- Reorder Providers Overlay Modal -->
+  <div id="reorderModal" class="modal-overlay hidden">
+    <div class="modal-provider-card" style="max-width: 440px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 14px;">
+        <h3 style="font-size: 1.15rem; font-weight: 800; color: #0f172a; display:flex; align-items:center; gap:6px;">
+          <span class="material-icons-round" style="color:#2563eb;">swap_vert</span> Reorder Providers
+        </h3>
+        <button type="button" onclick="window.closeReorderModal()" style="background:none; border:none; color:#64748b; cursor:pointer;">
+          <span class="material-icons-round" style="font-size:22px;">close</span>
+        </button>
+      </div>
+
+      <p style="font-size:0.75rem; color:#64748b; margin-bottom:14px; font-weight:600;">
+        Use the up and down arrows to rearrange your providers list. The top provider in each category becomes the active rate calculation default.
+      </p>
+
+      <div id="reorderModalContent"></div>
+
+      <div style="display: flex; gap: 10px; margin-top: 16px;">
+        <button type="button" onclick="window.closeReorderModal()" class="modal-btn-save" style="width:100%;">
+          Done
+        </button>
+      </div>
     </div>
   </div>
 
