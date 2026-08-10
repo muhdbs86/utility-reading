@@ -3,7 +3,7 @@ let auth = null;
 let currentUser = null;
 let userReadings = [];
 
-// Prevent multi-touch gesture zoom while preserving full button and click responsiveness
+// Prevent multi-touch gesture zoom while preserving full button responsiveness
 document.addEventListener('gesturestart', (e) => {
   e.preventDefault();
 });
@@ -228,10 +228,10 @@ function updateRateLabels() {
 function renderProviderActionControls(p, idx, totalItems) {
   return `
     <div style="display:flex; gap:6px; align-items:center;">
-      <button type="button" onclick="window.editProvider('${p.id}')" class="btn-icon-action" title="Edit Provider">
+      <button type="button" data-action="edit-provider" data-id="${p.id}" class="btn-icon-action" title="Edit Provider">
         <span class="material-icons-round" style="pointer-events:none; font-size:20px;">edit</span>
       </button>
-      <button type="button" onclick="window.deleteProvider('${p.id}')" class="btn-icon-action text-danger" title="Delete Provider">
+      <button type="button" data-action="delete-provider" data-id="${p.id}" class="btn-icon-action text-danger" title="Delete Provider">
         <span class="material-icons-round" style="pointer-events:none; font-size:20px;">delete</span>
       </button>
     </div>
@@ -400,10 +400,10 @@ function renderReorderModalContent() {
                 ${p.isDefault ? '<span class="badge-default">★ Default</span>' : ''}
               </div>
               <div style="display:flex; gap:6px; align-items:center;">
-                <button type="button" class="btn-reorder" onclick="window.reorderProviderInModal('${p.id}', 'up')" ${isFirst ? 'disabled' : ''}>
+                <button type="button" class="btn-reorder" data-action="reorder-up" data-id="${p.id}" ${isFirst ? 'disabled' : ''}>
                   <span class="material-icons-round" style="pointer-events:none; font-size:18px;">arrow_upward</span>
                 </button>
-                <button type="button" class="btn-reorder" onclick="window.reorderProviderInModal('${p.id}', 'down')" ${isLast ? 'disabled' : ''}>
+                <button type="button" class="btn-reorder" data-action="reorder-down" data-id="${p.id}" ${isLast ? 'disabled' : ''}>
                   <span class="material-icons-round" style="pointer-events:none; font-size:18px;">arrow_downward</span>
                 </button>
               </div>
@@ -415,20 +415,6 @@ function renderReorderModalContent() {
   });
 
   container.innerHTML = html;
-}
-
-window.reorderProviderInModal = function(id, direction) {
-  if (direction === 'up') {
-    window.moveProviderUp(id);
-  } else {
-    window.moveProviderDown(id);
-  }
-  renderReorderModalContent();
-};
-
-const btnOpenReorder = document.getElementById('btnOpenReorderModal');
-if (btnOpenReorder) {
-  btnOpenReorder.addEventListener('click', window.openReorderModal);
 }
 
 // Modal state
@@ -1137,6 +1123,42 @@ window.closeBreakdownModal = function() {
   const modal = document.getElementById('breakdownModal');
   if (modal) modal.classList.add('hidden');
 };
+
+// Central Delegated Event Handler for Provider Actions (Edit, Delete, Reorder, Modals)
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  
+  const action = btn.getAttribute('data-action');
+  const id = btn.getAttribute('data-id');
+
+  if (action === 'edit-provider') {
+    e.preventDefault();
+    const p = providersList.find(x => x.id === id);
+    if (p) openModalForProvider(p);
+  } else if (action === 'delete-provider') {
+    e.preventDefault();
+    if (confirm('Are you sure you want to delete this provider?')) {
+      providersList = providersList.filter(x => x.id !== id);
+      saveProvidersState();
+      renderReorderModalContent();
+    }
+  } else if (action === 'reorder-up') {
+    e.preventDefault();
+    window.moveProviderUp(id);
+    renderReorderModalContent();
+  } else if (action === 'reorder-down') {
+    e.preventDefault();
+    window.moveProviderDown(id);
+    renderReorderModalContent();
+  } else if (action === 'open-reorder-modal') {
+    e.preventDefault();
+    window.openReorderModal();
+  } else if (action === 'close-reorder-modal') {
+    e.preventDefault();
+    window.closeReorderModal();
+  }
+});
 
 // Default Firebase Config
 const defaultFirebaseConfig = {
