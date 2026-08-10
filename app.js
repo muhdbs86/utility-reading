@@ -16,9 +16,18 @@ let waterCycleStartDay = parseInt(localStorage.getItem('utility_water_cycle_star
 
 // Explicit Order Normalization (Top item in each category automatically becomes default)
 function normalizeProviderOrders() {
+  const categoryOrder = { 'REFUSE': 0, 'ELECTRICITY': 1, 'WATER': 2 };
+
+  // Physically sort providersList in memory by category and item order
+  providersList.sort((a, b) => {
+    const catA = categoryOrder[a.type] !== undefined ? categoryOrder[a.type] : 99;
+    const catB = categoryOrder[b.type] !== undefined ? categoryOrder[b.type] : 99;
+    if (catA !== catB) return catA - catB;
+    return (a.order !== undefined ? a.order : 999) - (b.order !== undefined ? b.order : 999);
+  });
+
   ['REFUSE', 'ELECTRICITY', 'WATER'].forEach(type => {
     const items = providersList.filter(p => p.type === type);
-    items.sort((a, b) => (a.order !== undefined ? a.order : 999) - (b.order !== undefined ? b.order : 999));
     items.forEach((p, idx) => {
       p.order = idx;
       p.isDefault = (idx === 0);
@@ -30,8 +39,9 @@ window.moveProviderUp = function(id) {
   normalizeProviderOrders();
   const item = providersList.find(x => x.id === id);
   if (!item) return;
+  
   const targetType = item.type;
-  const sameType = providersList.filter(p => p.type === targetType).sort((a, b) => a.order - b.order);
+  const sameType = providersList.filter(p => p.type === targetType).sort((a, b) => (a.order || 0) - (b.order || 0));
   const idx = sameType.findIndex(x => x.id === id);
   
   if (idx > 0) {
@@ -49,8 +59,9 @@ window.moveProviderDown = function(id) {
   normalizeProviderOrders();
   const item = providersList.find(x => x.id === id);
   if (!item) return;
+  
   const targetType = item.type;
-  const sameType = providersList.filter(p => p.type === targetType).sort((a, b) => a.order - b.order);
+  const sameType = providersList.filter(p => p.type === targetType).sort((a, b) => (a.order || 0) - (b.order || 0));
   const idx = sameType.findIndex(x => x.id === id);
   
   if (idx !== -1 && idx < sameType.length - 1) {
@@ -363,6 +374,11 @@ function renderProviders() {
       </div>
     `;
   }).join('');
+
+  const reorderModal = document.getElementById('reorderModal');
+  if (reorderModal && !reorderModal.classList.contains('hidden')) {
+    renderReorderModalContent();
+  }
 }
 
 // Reorder Overlay Modal Functions
