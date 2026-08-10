@@ -147,6 +147,67 @@ function getReadingCycleInfo(dateMs, cycleDay = 28) {
   return { monthName, year, month, rangeStr };
 }
 
+// Calculation Helpers
+function calculateWaterEst() {
+  const prevInput = document.getElementById('waterPrevInput');
+  const currInput = document.getElementById('waterCurrInput');
+  const usageEst = document.getElementById('waterUsageEst');
+  const taxEst = document.getElementById('waterTaxEst');
+  const totalEst = document.getElementById('waterTotalEst');
+
+  const prev = parseFloat(prevInput ? prevInput.value : 0) || 0;
+  const curr = parseFloat(currInput ? currInput.value : 0) || 0;
+  const usage = Math.max(0, curr - prev);
+
+  const provider = getActiveProvider('WATER');
+  let baseAmount = 0;
+
+  if (provider.model === 'FLAT') {
+    baseAmount = usage * (provider.flatRate || 1.20);
+  } else {
+    const t1Tariff = (provider.t1Tariff || 1.21) + (provider.t1Wct || 0.72) + (provider.t1Wbf || 1.09);
+    const t2Tariff = (provider.t2Tariff || 1.81) + (provider.t2Wct || 1.18) + (provider.t2Wbf || 1.40);
+
+    if (usage <= 40) {
+      baseAmount = usage * t1Tariff;
+    } else {
+      baseAmount = (40 * t1Tariff) + ((usage - 40) * t2Tariff);
+    }
+  }
+
+  const tax = baseAmount * ((provider.gst || 9.0) / 100);
+  const total = baseAmount + tax;
+
+  if (usageEst) usageEst.innerText = `${usage.toFixed(3)} m³`;
+  if (taxEst) taxEst.innerText = `S$${tax.toFixed(2)}`;
+  if (totalEst) totalEst.innerText = `S$${total.toFixed(2)}`;
+
+  return { usage, tax, total };
+}
+
+function calculateElecEst() {
+  const prevInput = document.getElementById('elecPrevInput');
+  const currInput = document.getElementById('elecCurrInput');
+  const usageEst = document.getElementById('elecUsageEst');
+  const totalEst = document.getElementById('elecTotalEst');
+
+  const prev = parseFloat(prevInput ? prevInput.value : 0) || 0;
+  const curr = parseFloat(currInput ? currInput.value : 0) || 0;
+  const usage = Math.max(0, curr - prev);
+
+  const provider = getActiveProvider('ELECTRICITY');
+  const tariff = provider.tariff || 0.2324;
+  const gst = provider.gst || 9.0;
+
+  const baseAmount = usage * tariff;
+  const total = baseAmount * (1 + (gst / 100));
+
+  if (usageEst) usageEst.innerText = `${usage.toFixed(1)} kWh`;
+  if (totalEst) totalEst.innerText = `S$${total.toFixed(2)}`;
+
+  return { usage, total };
+}
+
 // Auto-fill Previous Reading from History & Local Storage
 function autofillLatestReadings() {
   const waterPrevInput = document.getElementById('waterPrevInput');
@@ -574,6 +635,17 @@ if (btnWTiered) btnWTiered.addEventListener('click', () => {
   if (el) el.addEventListener('input', updateTierCalculatedTotals);
 });
 
+// Dynamic Reading Input Listeners for Real-time Total Calculation
+['waterPrevInput', 'waterCurrInput'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', calculateWaterEst);
+});
+
+['elecPrevInput', 'elecCurrInput'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', calculateElecEst);
+});
+
 const modalSave = document.getElementById('modalBtnSave');
 if (modalSave) modalSave.addEventListener('click', () => {
   const nameEl = document.getElementById('modalProviderName');
@@ -731,6 +803,8 @@ async function syncCycleToFirebase() {
 const btnSaveW = document.getElementById('btnSaveWater');
 if (btnSaveW) btnSaveW.addEventListener('click', async () => {
   const est = calculateWaterEst();
+  const waterPrevEl = document.getElementById('waterPrevInput');
+  const waterCurrEl = document.getElementById('waterCurrInput');
   const prev = parseFloat(waterPrevEl ? waterPrevEl.value : 0) || 0;
   const curr = parseFloat(waterCurrEl ? waterCurrEl.value : 0) || 0;
   if (curr <= 0) { alert('Please enter a valid current reading.'); return; }
@@ -765,6 +839,8 @@ if (btnSaveW) btnSaveW.addEventListener('click', async () => {
 const btnSaveE = document.getElementById('btnSaveElectricity');
 if (btnSaveE) btnSaveE.addEventListener('click', async () => {
   const est = calculateElecEst();
+  const elecPrevEl = document.getElementById('elecPrevInput');
+  const elecCurrEl = document.getElementById('elecCurrInput');
   const prev = parseFloat(elecPrevEl ? elecPrevEl.value : 0) || 0;
   const curr = parseFloat(elecCurrEl ? elecCurrEl.value : 0) || 0;
   if (curr <= 0) { alert('Please enter a valid current reading.'); return; }
@@ -1388,21 +1464,53 @@ if (btnMainLogin) {
   btnMainLogin.addEventListener('click', performGoogleLogin);
 }
 
-const btnLogout = document.getElementById('btnLogout');
-if (btnLogout) {
-  btnLogout.addEventListener('click', async () => {
-    if (auth) {
-      try {
+// Global Logout Handler
+window.handleLogout = async function() {
+  if (readingsUnsub) { try { readingsUnsub(); } catch(e){} readingsUnsub = null; }
+  if (providersUnsub) { try { providersUnsub(); } catch(e){} providersUnsub = null; }
+  if (cycleUnsub) { try { cycleUnsub(); } catch(e){} cycleUnsub = null; }
+
+  if (window.FirebaseSDK) {
+    try {
+      if (!auth) {
+        const { getAuth } = window.FirebaseSDK;
+        auth = getAuth();
+      }
+      if (auth) {
         const { signOut } = window.FirebaseSDK;
         await signOut(auth);
-      } catch(e) {}
+      }
+    } catch(e) {
+      console.error('Logout error:', e);
     }
-    const mainHeader = document.getElementById('mainHeader');
-    const authLanding = document.getElementById('authLandingScreen');
-    const mainContainer = document.getElementById('mainContainer');
-    if (mainHeader) mainHeader.classList.add('hidden');
-    if (authLanding) authLanding.classList.remove('hidden');
-    if (mainContainer) mainContainer.classList.add('hidden');
+  }
+
+  currentUser = null;
+
+  const mainHeader = document.getElementById('mainHeader');
+  const authLanding = document.getElementById('authLandingScreen');
+  const mainContainer = document.getElementById('mainContainer');
+  if (mainHeader) mainHeader.classList.add('hidden');
+  if (authLanding) authLanding.classList.remove('hidden');
+  if (mainContainer) mainContainer.classList.add('hidden');
+
+  const localSaved = localStorage.getItem('utility_readings_local');
+  try { userReadings = localSaved ? JSON.parse(localSaved) : []; } catch(e) { userReadings = []; }
+
+  const localProv = localStorage.getItem('utility_providers');
+  try { if (localProv) providersList = JSON.parse(localProv); } catch(e) {}
+
+  renderHistory();
+  autofillLatestReadings();
+  renderProviders();
+  updateRateLabels();
+};
+
+const btnLogout = document.getElementById('btnLogout');
+if (btnLogout) {
+  btnLogout.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.handleLogout();
   });
 }
 
