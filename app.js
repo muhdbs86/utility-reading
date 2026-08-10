@@ -14,51 +14,52 @@ let providersList = JSON.parse(localStorage.getItem('utility_providers')) || [];
 let elecCycleStartDay = parseInt(localStorage.getItem('utility_elec_cycle_start_day'), 10) || 28;
 let waterCycleStartDay = parseInt(localStorage.getItem('utility_water_cycle_start_day'), 10) || 28;
 
-// Define Move Functions Globally at Top Level
+// Explicit Order Normalization (Top item in each category automatically becomes default)
+function normalizeProviderOrders() {
+  ['REFUSE', 'ELECTRICITY', 'WATER'].forEach(type => {
+    const items = providersList.filter(p => p.type === type);
+    items.sort((a, b) => (a.order !== undefined ? a.order : 999) - (b.order !== undefined ? b.order : 999));
+    items.forEach((p, idx) => {
+      p.order = idx;
+      p.isDefault = (idx === 0);
+    });
+  });
+}
+
 window.moveProviderUp = function(id) {
+  normalizeProviderOrders();
   const item = providersList.find(x => x.id === id);
   if (!item) return;
   const targetType = item.type;
-  const sameType = providersList.filter(p => p.type === targetType);
+  const sameType = providersList.filter(p => p.type === targetType).sort((a, b) => a.order - b.order);
   const idx = sameType.findIndex(x => x.id === id);
   
   if (idx > 0) {
-    const temp = sameType[idx];
-    sameType[idx] = sameType[idx - 1];
-    sameType[idx - 1] = temp;
+    const prevItem = sameType[idx - 1];
+    const tempOrder = item.order;
+    item.order = prevItem.order;
+    prevItem.order = tempOrder;
 
-    let stIdx = 0;
-    providersList = providersList.map(p => {
-      if (p.type === targetType) {
-        return sameType[stIdx++];
-      }
-      return p;
-    });
-
+    normalizeProviderOrders();
     saveProvidersState();
   }
 };
 
 window.moveProviderDown = function(id) {
+  normalizeProviderOrders();
   const item = providersList.find(x => x.id === id);
   if (!item) return;
   const targetType = item.type;
-  const sameType = providersList.filter(p => p.type === targetType);
+  const sameType = providersList.filter(p => p.type === targetType).sort((a, b) => a.order - b.order);
   const idx = sameType.findIndex(x => x.id === id);
   
   if (idx !== -1 && idx < sameType.length - 1) {
-    const temp = sameType[idx];
-    sameType[idx] = sameType[idx + 1];
-    sameType[idx + 1] = temp;
+    const nextItem = sameType[idx + 1];
+    const tempOrder = item.order;
+    item.order = nextItem.order;
+    nextItem.order = tempOrder;
 
-    let stIdx = 0;
-    providersList = providersList.map(p => {
-      if (p.type === targetType) {
-        return sameType[stIdx++];
-      }
-      return p;
-    });
-
+    normalizeProviderOrders();
     saveProvidersState();
   }
 };
@@ -239,6 +240,7 @@ function renderProviderActionControls(p, idx, totalItems) {
 }
 
 function saveProvidersState() {
+  normalizeProviderOrders();
   localStorage.setItem('utility_providers', JSON.stringify(providersList));
   if (currentUser) {
     localStorage.setItem(`utility_providers_${currentUser.uid}`, JSON.stringify(providersList));
@@ -257,9 +259,10 @@ function renderProviders() {
 
   if (!refuseList || !elecList || !waterList) return;
 
-  const refuseItems = providersList.filter(p => p.type === 'REFUSE');
-  const elecItems = providersList.filter(p => p.type === 'ELECTRICITY');
-  const waterItems = providersList.filter(p => p.type === 'WATER');
+  normalizeProviderOrders();
+  const refuseItems = providersList.filter(p => p.type === 'REFUSE').sort((a, b) => (a.order || 0) - (b.order || 0));
+  const elecItems = providersList.filter(p => p.type === 'ELECTRICITY').sort((a, b) => (a.order || 0) - (b.order || 0));
+  const waterItems = providersList.filter(p => p.type === 'WATER').sort((a, b) => (a.order || 0) - (b.order || 0));
 
   refuseList.innerHTML = refuseItems.length === 0 
     ? `<p style="font-size:0.75rem; color:var(--text-muted); font-style:italic; padding:4px 0;">No refuse providers added.</p>`
@@ -378,10 +381,12 @@ function renderReorderModalContent() {
   const container = document.getElementById('reorderModalContent');
   if (!container) return;
 
+  normalizeProviderOrders();
+
   const categories = [
-    { type: 'REFUSE', title: '🗑️ Refuse Providers', items: providersList.filter(p => p.type === 'REFUSE') },
-    { type: 'ELECTRICITY', title: '⚡ Electricity Providers', items: providersList.filter(p => p.type === 'ELECTRICITY') },
-    { type: 'WATER', title: '💧 Water Providers', items: providersList.filter(p => p.type === 'WATER') }
+    { type: 'REFUSE', title: '🗑️ Refuse Providers', items: providersList.filter(p => p.type === 'REFUSE').sort((a, b) => (a.order || 0) - (b.order || 0)) },
+    { type: 'ELECTRICITY', title: '⚡ Electricity Providers', items: providersList.filter(p => p.type === 'ELECTRICITY').sort((a, b) => (a.order || 0) - (b.order || 0)) },
+    { type: 'WATER', title: '💧 Water Providers', items: providersList.filter(p => p.type === 'WATER').sort((a, b) => (a.order || 0) - (b.order || 0)) }
   ];
 
   let html = '';
