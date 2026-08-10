@@ -25,7 +25,7 @@ let providersList = JSON.parse(localStorage.getItem('utility_providers')) || [];
 let elecCycleStartDay = parseInt(localStorage.getItem('utility_elec_cycle_start_day'), 10) || 28;
 let waterCycleStartDay = parseInt(localStorage.getItem('utility_water_cycle_start_day'), 10) || 28;
 
-// Define Move Functions Globally at Top Level so HTML Onclick works instantly
+// Define Move Functions Globally at Top Level
 window.moveProviderUp = function(id) {
   const item = providersList.find(x => x.id === id);
   if (!item) return;
@@ -119,7 +119,7 @@ function formatDateDMY(dateMs) {
 function getReadingCycleInfo(dateMs, cycleDay = 28) {
   const dt = new Date(dateMs || Date.now());
   let year = dt.getFullYear();
-  let month = dt.getMonth(); // 0-indexed
+  let month = dt.getMonth();
   
   if (dt.getDate() < cycleDay) {
     month -= 1;
@@ -146,7 +146,7 @@ function getReadingCycleInfo(dateMs, cycleDay = 28) {
   return { monthName, year, month, rangeStr };
 }
 
-// Auto-fill Previous Reading from History & Local Storage (Persistent & Sticky)
+// Auto-fill Previous Reading from History & Local Storage
 function autofillLatestReadings() {
   const waterPrevInput = document.getElementById('waterPrevInput');
   const elecPrevInput = document.getElementById('elecPrevInput');
@@ -163,7 +163,6 @@ function autofillLatestReadings() {
     if (userElec) elecVal = userElec;
   }
 
-  // Check userReadings for latest entry (highest priority)
   if (userReadings && userReadings.length > 0) {
     const waterReadings = userReadings
       .filter(r => r.type === 'WATER' && (r.currentReading !== undefined || r.reading !== undefined))
@@ -191,7 +190,7 @@ function autofillLatestReadings() {
   }
 
   if (waterVal !== '' && waterVal !== null && waterPrevInput) {
-    waterPrevInput.value = parseFloat(waterVal).toFixed(4);
+    waterPrevInput.value = parseFloat(waterVal).toFixed(3);
     localStorage.setItem('utility_last_water_reading', waterVal.toString());
     if (currentUser) {
       localStorage.setItem(`utility_last_water_reading_${currentUser.uid}`, waterVal.toString());
@@ -238,21 +237,12 @@ function updateRateLabels() {
 }
 
 function renderProviderActionControls(p, idx, totalItems) {
-  const isFirst = idx === 0;
-  const isLast = idx === totalItems - 1;
   return `
     <div style="display:flex; gap:6px; align-items:center;">
-      <button type="button" class="btn-reorder" onclick="window.moveProviderUp('${p.id}')" title="Move Up" ${isFirst ? 'disabled' : ''}>
-        <span class="material-icons-round" style="font-size:20px;">arrow_upward</span>
-      </button>
-      <button type="button" class="btn-reorder" onclick="window.moveProviderDown('${p.id}')" title="Move Down" ${isLast ? 'disabled' : ''}>
-        <span class="material-icons-round" style="font-size:20px;">arrow_downward</span>
-      </button>
-      <div style="width:1px; height:20px; background:#e2e8f0; margin:0 2px;"></div>
-      <button type="button" onclick="window.editProvider('${p.id}')" class="btn-icon-action" title="Edit">
+      <button type="button" onclick="window.editProvider('${p.id}')" class="btn-icon-action" title="Edit Provider">
         <span class="material-icons-round" style="font-size:20px;">edit</span>
       </button>
-      <button type="button" onclick="window.deleteProvider('${p.id}')" class="btn-icon-action text-danger" title="Delete">
+      <button type="button" onclick="window.deleteProvider('${p.id}')" class="btn-icon-action text-danger" title="Delete Provider">
         <span class="material-icons-round" style="font-size:20px;">delete</span>
       </button>
     </div>
@@ -383,6 +373,75 @@ function renderProviders() {
   }).join('');
 }
 
+// Reorder Overlay Modal Functions
+window.openReorderModal = function() {
+  renderReorderModalContent();
+  const modal = document.getElementById('reorderModal');
+  if (modal) modal.classList.remove('hidden');
+};
+
+window.closeReorderModal = function() {
+  const modal = document.getElementById('reorderModal');
+  if (modal) modal.classList.add('hidden');
+};
+
+function renderReorderModalContent() {
+  const container = document.getElementById('reorderModalContent');
+  if (!container) return;
+
+  const categories = [
+    { type: 'REFUSE', title: '🗑️ Refuse Providers', items: providersList.filter(p => p.type === 'REFUSE') },
+    { type: 'ELECTRICITY', title: '⚡ Electricity Providers', items: providersList.filter(p => p.type === 'ELECTRICITY') },
+    { type: 'WATER', title: '💧 Water Providers', items: providersList.filter(p => p.type === 'WATER') }
+  ];
+
+  let html = '';
+
+  categories.forEach(cat => {
+    html += `
+      <div style="margin-bottom:14px;">
+        <div style="font-size:0.8rem; font-weight:800; color:#0f172a; margin-bottom:6px;">${cat.title}</div>
+        ${cat.items.length === 0 ? '<p style="font-size:0.72rem; color:#94a3b8; font-style:italic;">No providers added.</p>' : cat.items.map((p, idx) => {
+          const isFirst = idx === 0;
+          const isLast = idx === cat.items.length - 1;
+          return `
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:10px 12px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <strong style="font-size:0.82rem; color:#0f172a; display:block;">${p.name}</strong>
+                ${p.isDefault ? '<span class="badge-default">★ Default</span>' : ''}
+              </div>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <button type="button" class="btn-reorder" onclick="window.reorderProviderInModal('${p.id}', 'up')" ${isFirst ? 'disabled' : ''}>
+                  <span class="material-icons-round" style="font-size:18px;">arrow_upward</span>
+                </button>
+                <button type="button" class="btn-reorder" onclick="window.reorderProviderInModal('${p.id}', 'down')" ${isLast ? 'disabled' : ''}>
+                  <span class="material-icons-round" style="font-size:18px;">arrow_downward</span>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+window.reorderProviderInModal = function(id, direction) {
+  if (direction === 'up') {
+    window.moveProviderUp(id);
+  } else {
+    window.moveProviderDown(id);
+  }
+  renderReorderModalContent();
+};
+
+const btnOpenReorder = document.getElementById('btnOpenReorderModal');
+if (btnOpenReorder) {
+  btnOpenReorder.addEventListener('click', window.openReorderModal);
+}
+
 // Modal state
 let editingProviderId = null;
 let selectedModalType = 'ELECTRICITY';
@@ -486,118 +545,6 @@ function openModalForProvider(p = null) {
 
   const pModal = document.getElementById('providerModal');
   if (pModal) pModal.classList.remove('hidden');
-}
-
-window.editProvider = function(id) {
-  const p = providersList.find(x => x.id === id);
-  if (p) openModalForProvider(p);
-};
-
-window.deleteProvider = function(id) {
-  if (confirm('Are you sure you want to delete this provider?')) {
-    providersList = providersList.filter(x => x.id !== id);
-    saveProvidersState();
-  }
-};
-
-// Auto-format meter reading with amount-style backwards decimal entry
-function formatMeterInput(val, decimals = 4) {
-  if (!val) return '';
-  const rawDigits = val.replace(/\D/g, '');
-  if (!rawDigits) return '';
-  
-  const num = parseInt(rawDigits, 10);
-  const factor = Math.pow(10, decimals);
-  const intPart = Math.floor(num / factor).toString();
-  const decPart = (num % factor).toString().padStart(decimals, '0');
-  return `${intPart}.${decPart}`;
-}
-
-// Attach Water & Electricity input listeners
-const waterCurrEl = document.getElementById('waterCurrInput');
-const waterPrevEl = document.getElementById('waterPrevInput');
-const elecCurrEl = document.getElementById('elecCurrInput');
-const elecPrevEl = document.getElementById('elecPrevInput');
-
-[
-  { el: waterCurrEl, calc: calculateWaterEst },
-  { el: waterPrevEl, calc: calculateWaterEst }
-].forEach(({ el, calc }) => {
-  if (!el) return;
-  el.addEventListener('input', (e) => {
-    const formatted = formatMeterInput(e.target.value, 4);
-    el.value = formatted;
-    if (el.setSelectionRange) {
-      el.setSelectionRange(formatted.length, formatted.length);
-    }
-    calc();
-  });
-});
-
-[
-  { el: elecCurrEl, calc: calculateElecEst },
-  { el: elecPrevEl, calc: calculateElecEst }
-].forEach(({ el, calc }) => {
-  if (!el) return;
-  el.addEventListener('input', (e) => {
-    let val = e.target.value.replace(/[^0-9.]/g, '');
-    const parts = val.split('.');
-    if (parts.length > 2) {
-      val = parts[0] + '.' + parts.slice(1).join('');
-    }
-    el.value = val;
-    calc();
-  });
-});
-
-// Water Estimate Calculator
-function calculateWaterEst() {
-  const prev = parseFloat(waterPrevEl ? waterPrevEl.value : 0) || 0;
-  const curr = parseFloat(waterCurrEl ? waterCurrEl.value : 0) || 0;
-  const usage = Math.max(0, curr - prev);
-  
-  const usageLbl = document.getElementById('waterUsageEst');
-  if (usageLbl) usageLbl.innerText = `${usage.toFixed(1)} m³`;
-
-  const cfg = getActiveProvider('WATER');
-  let total = 0;
-  let tax = 0;
-
-  if (cfg.model === 'SG_TIERED' || cfg.model === 'TIERED') {
-    const t1 = Math.min(usage, 40);
-    const t2 = Math.max(0, usage - 40);
-    const baseT1 = (cfg.t1Tariff || 1.21) + (cfg.t1Wct || 0.72) + (cfg.t1Wbf || 1.09);
-    const baseT2 = (cfg.t2Tariff || 1.81) + (cfg.t2Wct || 1.18) + (cfg.t2Wbf || 1.40);
-    const totalBase = (t1 * baseT1) + (t2 * baseT2);
-    total = totalBase * (1 + ((cfg.gst || 9.0) / 100));
-    tax = total - (t1 * (cfg.t1Tariff || 1.21) + t2 * (cfg.t2Tariff || 1.81));
-  } else {
-    const base = usage * (cfg.flatRate || cfg.flat || 1.20);
-    total = base * (1 + ((cfg.gst || 9.0) / 100));
-    tax = total - base;
-  }
-
-  const taxLbl = document.getElementById('waterTaxEst');
-  const totalLbl = document.getElementById('waterTotalEst');
-  if (taxLbl) taxLbl.innerText = `$${tax.toFixed(2)}`;
-  if (totalLbl) totalLbl.innerText = `$${total.toFixed(2)}`;
-  return { usage, total };
-}
-
-function calculateElecEst() {
-  const prev = parseFloat(elecPrevEl ? elecPrevEl.value : 0) || 0;
-  const curr = parseFloat(elecCurrEl ? elecCurrEl.value : 0) || 0;
-  const usage = Math.max(0, curr - prev);
-  const cfg = getActiveProvider('ELECTRICITY');
-
-  const baseCost = usage * (cfg.tariff || 0.2324);
-  const total = baseCost * (1 + ((cfg.gst || 9.0) / 100));
-
-  const usageLbl = document.getElementById('elecUsageEst');
-  const totalLbl = document.getElementById('elecTotalEst');
-  if (usageLbl) usageLbl.innerText = `${usage.toFixed(1)} kWh`;
-  if (totalLbl) totalLbl.innerText = `$${total.toFixed(2)}`;
-  return { usage, total };
 }
 
 // Modal Listeners
@@ -812,7 +759,7 @@ if (btnSaveW) btnSaveW.addEventListener('click', async () => {
   };
 
   await saveAndSyncReading(item);
-  if (waterPrevEl) waterPrevEl.value = curr.toFixed(4);
+  if (waterPrevEl) waterPrevEl.value = curr.toFixed(3);
   localStorage.setItem('utility_last_water_reading', curr.toString());
   if (currentUser) localStorage.setItem(`utility_last_water_reading_${currentUser.uid}`, curr.toString());
   if (waterCurrEl) waterCurrEl.value = '';
@@ -1001,7 +948,7 @@ function renderHistory() {
             <div class="history-subcard-water">
               <div style="font-weight:700; font-size:0.76rem; color:#0284c7; display:flex; align-items:center; gap:4px;">💧 Water</div>
               <div style="font-weight:800; font-size:0.92rem; color:#0284c7; margin:4px 0 2px 0;">S$${waterTotal.toFixed(4)}</div>
-              <div style="font-size:0.72rem; color:#0f172a; font-weight:700;">${waterUsage.toFixed(4)} m³</div>
+              <div style="font-size:0.72rem; color:#0f172a; font-weight:700;">${waterUsage.toFixed(3)} m³</div>
               <div style="font-size:0.68rem; color:#94a3b8; margin-top:2px;">${g.water.length} entries</div>
             </div>
           </div>
@@ -1045,8 +992,14 @@ function renderBreakdownModalContent() {
     return cycleInfo.monthName === activeBreakdownGroupKey;
   });
 
-  const elecItems = items.filter(x => x.type === 'ELECTRICITY');
-  const waterItems = items.filter(x => x.type === 'WATER');
+  // Sort logs descending (Latest record first)
+  const elecItems = items
+    .filter(x => x.type === 'ELECTRICITY')
+    .sort((a, b) => (b.readingDate || b.timestamp || 0) - (a.readingDate || a.timestamp || 0));
+
+  const waterItems = items
+    .filter(x => x.type === 'WATER')
+    .sort((a, b) => (b.readingDate || b.timestamp || 0) - (a.readingDate || a.timestamp || 0));
 
   const elecTotal = elecItems.reduce((s, x) => s + (x.totalAmount || 0), 0);
   const elecUsage = elecItems.reduce((s, x) => s + (x.usage || 0), 0);
@@ -1099,7 +1052,7 @@ function renderBreakdownModalContent() {
           <span>Est. Bill: <strong style="color:#ef4444;">S$${elecTotal.toFixed(4)}</strong></span>
         </div>
 
-        <!-- Logs Breakdown -->
+        <!-- Logs Breakdown (Latest record first) -->
         <div style="margin-top:8px; border-top:1px dashed #e2e8f0; padding-top:6px;">
           ${elecItems.length === 0 ? '<p style="font-size:0.72rem; color:#94a3b8; font-style:italic;">No electricity entries.</p>' : elecItems.map(item => `
             <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:0.74rem;">
@@ -1138,11 +1091,11 @@ function renderBreakdownModalContent() {
 
         <div style="display:flex; justify-content:space-between; font-size:0.74rem; color:#64748b; padding:6px 0; border-top:1px solid #f1f5f9;">
           <span>Providers: <strong style="color:#0f172a;">${waterItems[0]?.providerName || activeWaterP.name}</strong></span>
-          <span>Total Usage: <strong style="color:#0f172a;">${waterUsage.toFixed(4)} m³</strong></span>
+          <span>Total Usage: <strong style="color:#0f172a;">${waterUsage.toFixed(3)} m³</strong></span>
           <span>Est. Bill: <strong style="color:#0284c7;">S$${waterTotal.toFixed(4)}</strong></span>
         </div>
 
-        <!-- Logs Breakdown -->
+        <!-- Logs Breakdown (Latest record first) -->
         <div style="margin-top:8px; border-top:1px dashed #e2e8f0; padding-top:6px;">
           ${waterItems.length === 0 ? '<p style="font-size:0.72rem; color:#94a3b8; font-style:italic;">No water entries.</p>' : waterItems.map(item => `
             <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:0.74rem;">
