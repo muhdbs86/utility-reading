@@ -3,18 +3,7 @@ let auth = null;
 let currentUser = null;
 let userReadings = [];
 
-// Prevent double-tap and gesture zoom on mobile devices
-let lastTouchEnd = 0;
-document.addEventListener('touchend', (event) => {
-  const now = Date.now();
-  if (now - lastTouchEnd <= 300) {
-    if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName)) {
-      event.preventDefault();
-    }
-  }
-  lastTouchEnd = now;
-}, { passive: false });
-
+// Prevent multi-touch gesture zoom while preserving full button and click responsiveness
 document.addEventListener('gesturestart', (e) => {
   e.preventDefault();
 });
@@ -240,10 +229,10 @@ function renderProviderActionControls(p, idx, totalItems) {
   return `
     <div style="display:flex; gap:6px; align-items:center;">
       <button type="button" onclick="window.editProvider('${p.id}')" class="btn-icon-action" title="Edit Provider">
-        <span class="material-icons-round" style="font-size:20px;">edit</span>
+        <span class="material-icons-round" style="pointer-events:none; font-size:20px;">edit</span>
       </button>
       <button type="button" onclick="window.deleteProvider('${p.id}')" class="btn-icon-action text-danger" title="Delete Provider">
-        <span class="material-icons-round" style="font-size:20px;">delete</span>
+        <span class="material-icons-round" style="pointer-events:none; font-size:20px;">delete</span>
       </button>
     </div>
   `;
@@ -412,10 +401,10 @@ function renderReorderModalContent() {
               </div>
               <div style="display:flex; gap:6px; align-items:center;">
                 <button type="button" class="btn-reorder" onclick="window.reorderProviderInModal('${p.id}', 'up')" ${isFirst ? 'disabled' : ''}>
-                  <span class="material-icons-round" style="font-size:18px;">arrow_upward</span>
+                  <span class="material-icons-round" style="pointer-events:none; font-size:18px;">arrow_upward</span>
                 </button>
                 <button type="button" class="btn-reorder" onclick="window.reorderProviderInModal('${p.id}', 'down')" ${isLast ? 'disabled' : ''}>
-                  <span class="material-icons-round" style="font-size:18px;">arrow_downward</span>
+                  <span class="material-icons-round" style="pointer-events:none; font-size:18px;">arrow_downward</span>
                 </button>
               </div>
             </div>
@@ -1063,7 +1052,7 @@ function renderBreakdownModalContent() {
               <div style="display:flex; align-items:center; gap:8px;">
                 <strong style="color:#ef4444;">S$${(item.totalAmount || 0).toFixed(2)}</strong>
                 <button type="button" onclick="window.deleteReadingItem('${item.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:2px;">
-                  <span class="material-icons-round" style="font-size:16px;">delete</span>
+                  <span class="material-icons-round" style="pointer-events:none; font-size:16px;">delete</span>
                 </button>
               </div>
             </div>
@@ -1106,7 +1095,7 @@ function renderBreakdownModalContent() {
               <div style="display:flex; align-items:center; gap:8px;">
                 <strong style="color:#0284c7;">S$${(item.totalAmount || 0).toFixed(2)}</strong>
                 <button type="button" onclick="window.deleteReadingItem('${item.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:2px;">
-                  <span class="material-icons-round" style="font-size:16px;">delete</span>
+                  <span class="material-icons-round" style="pointer-events:none; font-size:16px;">delete</span>
                 </button>
               </div>
             </div>
