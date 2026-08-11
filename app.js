@@ -3,6 +3,36 @@ let auth = null;
 let currentUser = null;
 let userReadings = [];
 
+// Register Service Worker for Android PWA Installability
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.warn('Service Worker registration:', err));
+  });
+}
+
+// Android PWA Install Banner Listener
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const pwaBanner = document.getElementById('pwaInstallBanner');
+  if (pwaBanner) pwaBanner.classList.remove('hidden');
+});
+
+const btnInstallPwa = document.getElementById('btnInstallPwa');
+if (btnInstallPwa) {
+  btnInstallPwa.addEventListener('click', async () => {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      if (outcome === 'accepted') console.log('User installed PWA');
+      deferredInstallPrompt = null;
+      const pwaBanner = document.getElementById('pwaInstallBanner');
+      if (pwaBanner) pwaBanner.classList.add('hidden');
+    }
+  });
+}
+
 // Prevent multi-touch gesture zoom
 document.addEventListener('gesturestart', (e) => {
   e.preventDefault();
@@ -13,20 +43,6 @@ let providersList = JSON.parse(localStorage.getItem('utility_providers')) || [];
 
 let elecCycleStartDay = parseInt(localStorage.getItem('utility_elec_cycle_start_day'), 10) || 28;
 let waterCycleStartDay = parseInt(localStorage.getItem('utility_water_cycle_start_day'), 10) || 28;
-
-// Populate Defaults if List is Empty or Missing Utility Types
-function ensureDefaultProviders() {
-  if (!providersList.some(p => p.type === 'REFUSE')) {
-    providersList.push({ id: 'p_refuse_default', type: 'REFUSE', name: 'Refuse Fee', fee: 9.76, gst: 9.0, isDefault: true, order: 0 });
-  }
-  if (!providersList.some(p => p.type === 'ELECTRICITY')) {
-    providersList.push({ id: 'p_elec_default', type: 'ELECTRICITY', name: 'SP Group', tariff: 0.2324, gst: 9.0, isDefault: true, order: 0 });
-  }
-  if (!providersList.some(p => p.type === 'WATER')) {
-    providersList.push({ id: 'p_water_default', type: 'WATER', name: 'PUB Water', model: 'SG_TIERED', t1Tariff: 1.21, t1Wct: 0.72, t1Wbf: 1.09, t2Tariff: 1.81, t2Wct: 1.18, t2Wbf: 1.40, flatRate: 1.20, gst: 9.0, isDefault: true, order: 0 });
-  }
-  normalizeProviderOrders();
-}
 
 // Explicit Order Normalization
 function normalizeProviderOrders() {
@@ -222,7 +238,7 @@ formatWaterInputAutoDecimal(document.getElementById('waterCurrInput'));
 formatElecInputWholeNumber(document.getElementById('elecPrevInput'));
 formatElecInputWholeNumber(document.getElementById('elecCurrInput'));
 
-// Auto-fill Previous & Current Readings
+// Auto-fill Previous Reading from User History
 function autofillLatestReadings() {
   const waterPrevInput = document.getElementById('waterPrevInput');
   const waterCurrInput = document.getElementById('waterCurrInput');
