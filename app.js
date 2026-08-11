@@ -208,6 +208,44 @@ function calculateElecEst() {
   return { usage, total };
 }
 
+// Dynamic Automated Input Formatting Helpers
+function formatWaterInputAutoDecimal(inputEl) {
+  if (!inputEl) return;
+  inputEl.addEventListener('input', () => {
+    let raw = inputEl.value;
+    let digits = raw.replace(/\D/g, ''); // Extract numbers only
+    if (!digits || parseInt(digits, 10) === 0) {
+      inputEl.value = '';
+    } else {
+      if (digits.length > 9) digits = digits.slice(0, 9);
+      const num = parseInt(digits, 10);
+      inputEl.value = (num / 1000).toFixed(3);
+    }
+    calculateWaterEst();
+  });
+}
+
+function formatElecInputWholeNumber(inputEl) {
+  if (!inputEl) return;
+  inputEl.addEventListener('input', () => {
+    let raw = inputEl.value;
+    let digits = raw.replace(/\D/g, ''); // Extract numbers only
+    if (!digits) {
+      inputEl.value = '';
+    } else {
+      if (digits.length > 8) digits = digits.slice(0, 8);
+      inputEl.value = parseInt(digits, 10).toString();
+    }
+    calculateElecEst();
+  });
+}
+
+// Bind Input Formatters
+formatWaterInputAutoDecimal(document.getElementById('waterPrevInput'));
+formatWaterInputAutoDecimal(document.getElementById('waterCurrInput'));
+formatElecInputWholeNumber(document.getElementById('elecPrevInput'));
+formatElecInputWholeNumber(document.getElementById('elecCurrInput'));
+
 // Auto-fill Previous Reading from History & Local Storage
 function autofillLatestReadings() {
   const waterPrevInput = document.getElementById('waterPrevInput');
@@ -635,52 +673,6 @@ if (btnWTiered) btnWTiered.addEventListener('click', () => {
   if (el) el.addEventListener('input', updateTierCalculatedTotals);
 });
 
-// Dynamic Input Formatting & Estimation Handlers
-const waterPrevEl = document.getElementById('waterPrevInput');
-const waterCurrEl = document.getElementById('waterCurrInput');
-const elecPrevEl = document.getElementById('elecPrevInput');
-const elecCurrEl = document.getElementById('elecCurrInput');
-
-if (waterPrevEl) {
-  waterPrevEl.addEventListener('input', calculateWaterEst);
-  waterPrevEl.addEventListener('blur', () => {
-    if (waterPrevEl.value.trim() !== '') {
-      const v = parseFloat(waterPrevEl.value);
-      if (!isNaN(v)) waterPrevEl.value = v.toFixed(3);
-    }
-  });
-}
-
-if (waterCurrEl) {
-  waterCurrEl.addEventListener('input', calculateWaterEst);
-  waterCurrEl.addEventListener('blur', () => {
-    if (waterCurrEl.value.trim() !== '') {
-      const v = parseFloat(waterCurrEl.value);
-      if (!isNaN(v)) waterCurrEl.value = v.toFixed(3);
-    }
-  });
-}
-
-if (elecPrevEl) {
-  elecPrevEl.addEventListener('input', calculateElecEst);
-  elecPrevEl.addEventListener('blur', () => {
-    if (elecPrevEl.value.trim() !== '') {
-      const v = parseFloat(elecPrevEl.value);
-      if (!isNaN(v)) elecPrevEl.value = Math.round(v).toString();
-    }
-  });
-}
-
-if (elecCurrEl) {
-  elecCurrEl.addEventListener('input', calculateElecEst);
-  elecCurrEl.addEventListener('blur', () => {
-    if (elecCurrEl.value.trim() !== '') {
-      const v = parseFloat(elecCurrEl.value);
-      if (!isNaN(v)) elecCurrEl.value = Math.round(v).toString();
-    }
-  });
-}
-
 const modalSave = document.getElementById('modalBtnSave');
 if (modalSave) modalSave.addEventListener('click', () => {
   const nameEl = document.getElementById('modalProviderName');
@@ -837,9 +829,8 @@ async function syncCycleToFirebase() {
 // Save Reading & Sync
 const btnSaveW = document.getElementById('btnSaveWater');
 if (btnSaveW) btnSaveW.addEventListener('click', async () => {
-  if (waterCurrEl && waterCurrEl.value.trim() !== '') {
-    waterCurrEl.value = parseFloat(waterCurrEl.value).toFixed(3);
-  }
+  const waterPrevEl = document.getElementById('waterPrevInput');
+  const waterCurrEl = document.getElementById('waterCurrInput');
 
   const est = calculateWaterEst();
   const prev = parseFloat(waterPrevEl ? waterPrevEl.value : 0) || 0;
@@ -875,9 +866,8 @@ if (btnSaveW) btnSaveW.addEventListener('click', async () => {
 
 const btnSaveE = document.getElementById('btnSaveElectricity');
 if (btnSaveE) btnSaveE.addEventListener('click', async () => {
-  if (elecCurrEl && elecCurrEl.value.trim() !== '') {
-    elecCurrEl.value = Math.round(parseFloat(elecCurrEl.value)).toString();
-  }
+  const elecPrevEl = document.getElementById('elecPrevInput');
+  const elecCurrEl = document.getElementById('elecCurrInput');
 
   const est = calculateElecEst();
   const prev = Math.round(parseFloat(elecPrevEl ? elecPrevEl.value : 0) || 0);
