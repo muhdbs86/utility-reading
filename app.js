@@ -14,22 +14,9 @@ let providersList = JSON.parse(localStorage.getItem('utility_providers')) || [];
 let elecCycleStartDay = parseInt(localStorage.getItem('utility_elec_cycle_start_day'), 10) || 28;
 let waterCycleStartDay = parseInt(localStorage.getItem('utility_water_cycle_start_day'), 10) || 28;
 
-// Populate Defaults if List is Empty or Missing Utility Types
-function ensureDefaultProviders() {
-  if (!providersList.some(p => p.type === 'REFUSE')) {
-    providersList.push({ id: 'p_refuse_default', type: 'REFUSE', name: 'Refuse Fee', fee: 9.76, gst: 9.0, isDefault: true, order: 0 });
-  }
-  if (!providersList.some(p => p.type === 'ELECTRICITY')) {
-    providersList.push({ id: 'p_elec_default', type: 'ELECTRICITY', name: 'SP Group', tariff: 0.2324, gst: 9.0, isDefault: true, order: 0 });
-  }
-  if (!providersList.some(p => p.type === 'WATER')) {
-    providersList.push({ id: 'p_water_default', type: 'WATER', name: 'PUB Water', model: 'SG_TIERED', t1Tariff: 1.21, t1Wct: 0.72, t1Wbf: 1.09, t2Tariff: 1.81, t2Wct: 1.18, t2Wbf: 1.40, flatRate: 1.20, gst: 9.0, isDefault: true, order: 0 });
-  }
-  normalizeProviderOrders();
-}
-
 // Explicit Order Normalization
 function normalizeProviderOrders() {
+  if (!providersList || !providersList.length) return;
   const categoryOrder = { 'REFUSE': 0, 'ELECTRICITY': 1, 'WATER': 2 };
 
   providersList.sort((a, b) => {
@@ -49,18 +36,21 @@ function normalizeProviderOrders() {
 }
 
 function getActiveProvider(type) {
-  ensureDefaultProviders();
-  const match = providersList.find(p => p.type === type && p.isDefault);
-  if (match) return match;
-  const fallback = providersList.find(p => p.type === type);
-  if (fallback) return fallback;
+  if (providersList && providersList.length > 0) {
+    const match = providersList.find(p => p.type === type && p.isDefault);
+    if (match) return match;
+    const fallback = providersList.find(p => p.type === type);
+    if (fallback) return fallback;
+  }
+  
+  // Default Zero Rates when user has no configured providers
   if (type === 'WATER') {
-    return { name: 'PUB Water', model: 'SG_TIERED', t1Tariff: 1.21, t1Wct: 0.72, t1Wbf: 1.09, t2Tariff: 1.81, t2Wct: 1.18, t2Wbf: 1.40, flatRate: 1.20, gst: 9.0 };
+    return { name: 'No Provider Set', model: 'FLAT', flatRate: 0, t1Tariff: 0, t1Wct: 0, t1Wbf: 0, t2Tariff: 0, t2Wct: 0, t2Wbf: 0, gst: 0 };
   }
   if (type === 'ELECTRICITY') {
-    return { name: 'SP Group', tariff: 0.2324, gst: 9.0 };
+    return { name: 'No Provider Set', tariff: 0, gst: 0 };
   }
-  return { name: 'Refuse Fee', fee: 9.76, gst: 9.0 };
+  return { name: 'No Provider Set', fee: 0, gst: 0 };
 }
 
 function getDefaultCycleStartDate(type = 'WATER') {
@@ -135,10 +125,10 @@ function calculateWaterEst() {
   let baseAmount = 0;
 
   if (provider.model === 'FLAT') {
-    baseAmount = usage * (provider.flatRate || 1.20);
+    baseAmount = usage * (provider.flatRate || 0);
   } else {
-    const t1Tariff = (provider.t1Tariff || 1.21) + (provider.t1Wct || 0.72) + (provider.t1Wbf || 1.09);
-    const t2Tariff = (provider.t2Tariff || 1.81) + (provider.t2Wct || 1.18) + (provider.t2Wbf || 1.40);
+    const t1Tariff = (provider.t1Tariff || 0) + (provider.t1Wct || 0) + (provider.t1Wbf || 0);
+    const t2Tariff = (provider.t2Tariff || 0) + (provider.t2Wct || 0) + (provider.t2Wbf || 0);
 
     if (usage <= 40) {
       baseAmount = usage * t1Tariff;
@@ -147,7 +137,7 @@ function calculateWaterEst() {
     }
   }
 
-  const tax = baseAmount * ((provider.gst || 9.0) / 100);
+  const tax = baseAmount * ((provider.gst || 0) / 100);
   const total = baseAmount + tax;
 
   if (usageEst) usageEst.innerText = `${usage.toFixed(3)} m³`;
@@ -168,8 +158,8 @@ function calculateElecEst() {
   const usage = Math.max(0, curr - prev);
 
   const provider = getActiveProvider('ELECTRICITY');
-  const tariff = provider.tariff || 0.2324;
-  const gst = provider.gst || 9.0;
+  const tariff = provider.tariff || 0;
+  const gst = provider.gst || 0;
 
   const baseAmount = usage * tariff;
   const total = baseAmount * (1 + (gst / 100));
@@ -218,21 +208,20 @@ formatWaterInputAutoDecimal(document.getElementById('waterCurrInput'));
 formatElecInputWholeNumber(document.getElementById('elecPrevInput'));
 formatElecInputWholeNumber(document.getElementById('elecCurrInput'));
 
-// Auto-fill Previous Reading from History & Local Storage
+// Auto-fill Previous Reading from User History
 function autofillLatestReadings() {
   const waterPrevInput = document.getElementById('waterPrevInput');
   const elecPrevInput = document.getElementById('elecPrevInput');
 
-  let waterVal = localStorage.getItem('utility_last_water_reading') || '';
-  if (currentUser) {
-    const userWater = localStorage.getItem(`utility_last_water_reading_${currentUser.uid}`);
-    if (userWater) waterVal = userWater;
-  }
+  let waterVal = '';
+  let elecVal = '';
 
-  let elecVal = localStorage.getItem('utility_last_elec_reading') || '';
   if (currentUser) {
-    const userElec = localStorage.getItem(`utility_last_elec_reading_${currentUser.uid}`);
-    if (userElec) elecVal = userElec;
+    waterVal = localStorage.getItem(`utility_last_water_reading_${currentUser.uid}`) || '';
+    elecVal = localStorage.getItem(`utility_last_elec_reading_${currentUser.uid}`) || '';
+  } else {
+    waterVal = localStorage.getItem('utility_last_water_reading') || '';
+    elecVal = localStorage.getItem('utility_last_elec_reading') || '';
   }
 
   if (userReadings && userReadings.length > 0) {
@@ -242,10 +231,7 @@ function autofillLatestReadings() {
 
     if (waterReadings.length > 0) {
       const latest = waterReadings[0];
-      const v = latest.currentReading !== undefined ? latest.currentReading : latest.reading;
-      if (v !== undefined && v !== null && v !== '') {
-        waterVal = v;
-      }
+      waterVal = latest.currentReading !== undefined ? latest.currentReading : latest.reading;
     }
 
     const elecReadings = userReadings
@@ -254,27 +240,16 @@ function autofillLatestReadings() {
 
     if (elecReadings.length > 0) {
       const latest = elecReadings[0];
-      const v = latest.currentReading !== undefined ? latest.currentReading : latest.reading;
-      if (v !== undefined && v !== null && v !== '') {
-        elecVal = v;
-      }
+      elecVal = latest.currentReading !== undefined ? latest.currentReading : latest.reading;
     }
   }
 
-  if (waterVal !== '' && waterVal !== null && waterPrevInput) {
-    waterPrevInput.value = parseFloat(waterVal).toFixed(3);
-    localStorage.setItem('utility_last_water_reading', waterVal.toString());
-    if (currentUser) {
-      localStorage.setItem(`utility_last_water_reading_${currentUser.uid}`, waterVal.toString());
-    }
+  if (waterPrevInput) {
+    waterPrevInput.value = (waterVal !== '' && waterVal !== null) ? parseFloat(waterVal).toFixed(3) : '';
   }
 
-  if (elecVal !== '' && elecVal !== null && elecPrevInput) {
-    elecPrevInput.value = Math.round(parseFloat(elecVal) || 0).toString();
-    localStorage.setItem('utility_last_elec_reading', elecVal.toString());
-    if (currentUser) {
-      localStorage.setItem(`utility_last_elec_reading_${currentUser.uid}`, elecVal.toString());
-    }
+  if (elecPrevInput) {
+    elecPrevInput.value = (elecVal !== '' && elecVal !== null) ? Math.round(parseFloat(elecVal) || 0).toString() : '';
   }
 
   calculateWaterEst();
@@ -334,7 +309,7 @@ function saveProvidersState() {
   calculateElecEst();
 }
 
-// FULL RESTORED PROVIDERS & RATES RENDERER
+// PROVIDERS & RATES RENDERER
 function renderProviders() {
   const refuseList = document.getElementById('refuseProvidersList');
   const elecList = document.getElementById('elecProvidersList');
@@ -342,7 +317,6 @@ function renderProviders() {
 
   if (!refuseList || !elecList || !waterList) return;
 
-  ensureDefaultProviders();
   normalizeProviderOrders();
 
   const refuseItems = providersList.filter(p => p.type === 'REFUSE').sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -836,7 +810,7 @@ function renderHistory() {
   if (!currentMonitorCard || !historyList) return;
 
   const refuseP = getActiveProvider('REFUSE');
-  const refuseFee = (refuseP.fee || 9.76) * (1 + ((refuseP.gst || 9.0) / 100));
+  const refuseFee = (refuseP.fee || 0) * (1 + ((refuseP.gst || 0) / 100));
 
   const currentCycleInfo = getReadingCycleInfo(Date.now(), waterCycleStartDay);
   
@@ -1004,7 +978,7 @@ function renderBreakdownModalContent() {
   if (!activeBreakdownGroupKey) return;
 
   const refuseP = getActiveProvider('REFUSE');
-  const refuseFee = (refuseP.fee || 9.76) * (1 + ((refuseP.gst || 9.0) / 100));
+  const refuseFee = (refuseP.fee || 0) * (1 + ((refuseP.gst || 0) / 100));
 
   const items = userReadings.filter(item => {
     const itemDate = item.readingDate || item.timestamp || Date.now();
@@ -1224,18 +1198,7 @@ let readingsUnsub = null;
 let providersUnsub = null;
 let cycleUnsub = null;
 
-ensureDefaultProviders();
 initFirebase(activeConfig);
-
-const localSaved = localStorage.getItem('utility_readings_local');
-if (localSaved) {
-  try { userReadings = JSON.parse(localSaved); } catch(e) {}
-}
-
-renderProviders();
-updateRateLabels();
-updateCycleLabels();
-autofillLatestReadings();
 
 function initFirebase(cfg) {
   try {
@@ -1276,9 +1239,12 @@ function initFirebase(cfg) {
             userReadings = Array.isArray(data) ? data : Object.entries(data).map(([id, val]) => ({ id, ...val }));
             localStorage.setItem(`utility_readings_${user.uid}`, JSON.stringify(userReadings));
             localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
-            renderHistory();
-            autofillLatestReadings();
+          } else {
+            userReadings = [];
+            localStorage.removeItem(`utility_readings_${user.uid}`);
           }
+          renderHistory();
+          autofillLatestReadings();
         });
 
         const userProvidersRef = ref(db, `users/${user.uid}/providers`);
@@ -1287,12 +1253,13 @@ function initFirebase(cfg) {
           if (snapshot.exists()) {
             const data = snapshot.val();
             providersList = Array.isArray(data) ? data : Object.values(data);
+            localStorage.setItem(`utility_providers_${user.uid}`, JSON.stringify(providersList));
+            localStorage.setItem('utility_providers', JSON.stringify(providersList));
           } else {
-            ensureDefaultProviders();
-            syncProvidersToFirebase();
+            // New user account: Keep providers list empty ($0.00 zero rates)
+            providersList = [];
+            localStorage.removeItem(`utility_providers_${user.uid}`);
           }
-          localStorage.setItem(`utility_providers_${user.uid}`, JSON.stringify(providersList));
-          localStorage.setItem('utility_providers', JSON.stringify(providersList));
           renderProviders();
           updateRateLabels();
           calculateWaterEst();
@@ -1321,7 +1288,8 @@ function initFirebase(cfg) {
         if (authLanding) authLanding.classList.remove('hidden');
         if (mainContainer) mainContainer.classList.add('hidden');
 
-        ensureDefaultProviders();
+        userReadings = [];
+        providersList = [];
         renderHistory();
         autofillLatestReadings();
         renderProviders();
@@ -1370,7 +1338,8 @@ window.handleLogout = async function() {
   if (authLanding) authLanding.classList.remove('hidden');
   if (mainContainer) mainContainer.classList.add('hidden');
 
-  ensureDefaultProviders();
+  userReadings = [];
+  providersList = [];
   renderHistory();
   autofillLatestReadings();
   renderProviders();
