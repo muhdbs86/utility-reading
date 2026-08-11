@@ -21,17 +21,22 @@
   touch-action: manipulation !important;
 }
 
+/* Stop whole page/body scrolling everywhere */
 html, body {
   background-color: var(--bg-dark);
   color: var(--text-main);
-  padding-bottom: 70px;
-  min-height: 100vh;
+  height: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden !important; /* Disables outer body scrolling */
+  padding: 0;
+  margin: 0;
   font-size: 0.85rem;
   touch-action: manipulation !important;
   -webkit-text-size-adjust: 100%;
 }
 
-/* Ensure clicking icons/spans inside buttons always targets the button */
+/* Ensure clicking icons/spans inside buttons targets the button */
 button * {
   pointer-events: none;
 }
@@ -47,9 +52,9 @@ input[type=number] {
   appearance: textfield;
 }
 
-/* Prevent auto zoom-in on all mobile inputs across all tabs */
+/* Prevent auto zoom-in on all mobile inputs */
 input, select, textarea, .form-input, .modal-input, .modal-input-sm {
-  font-size: 16px !important; /* Mobile browsers auto-zoom if font-size < 16px */
+  font-size: 16px !important;
   touch-action: manipulation !important;
 }
 
@@ -58,13 +63,16 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   vertical-align: middle;
 }
 
+/* Header - Pushed safely below iPhone Notch / Dynamic Island */
 .header {
   background-color: rgba(30, 41, 59, 0.95);
   backdrop-filter: blur(12px);
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 50;
-  padding: 10px 12px;
+  padding-top: max(12px, env(safe-area-inset-top)); /* Clears iPhone Notch */
+  padding-bottom: 12px;
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
   border-bottom: 1px solid var(--card-border);
   display: flex;
   justify-content: space-between;
@@ -113,18 +121,25 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   color: var(--text-muted);
 }
 
+/* App Container - Fills Viewport Height beneath Header */
 .container {
   max-width: 480px;
   margin: 0 auto;
-  padding: 10px;
+  padding: 10px 10px 0 10px;
+  height: calc(100dvh - 58px - env(safe-area-inset-top));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
+/* Fixed Tab Selector at top of screen */
 .type-selector {
+  flex-shrink: 0;
   display: flex;
   background: #1e293b;
   padding: 3px;
   border-radius: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   border: 1px solid var(--card-border);
   gap: 2px;
   overflow-x: auto;
@@ -153,6 +168,22 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   background: var(--primary);
   color: white;
   box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
+}
+
+/* Internal Scrollable Content Sections (Rates, History, etc.) */
+.tab-section {
+  flex: 1;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 24px;
+}
+
+.tab-section::-webkit-scrollbar {
+  width: 4px;
+}
+.tab-section::-webkit-scrollbar-thumb {
+  background: var(--card-border);
+  border-radius: 4px;
 }
 
 .card {
@@ -193,7 +224,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   border-radius: 8px;
   padding: 8px 10px;
   color: white;
-  font-size: 16px !important; /* Prevents auto zoom-in on focus */
+  font-size: 16px !important;
   outline: none;
   transition: border-color 0.2s;
 }
