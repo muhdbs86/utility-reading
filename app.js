@@ -829,10 +829,11 @@ async function saveAndSyncReading(item) {
 // Modal state for Detailed Breakdown
 let activeBreakdownGroupKey = null;
 
-// RENDER HISTORY SCREEN
+// RENDER HISTORY SCREEN (FIXED TOP MONITOR & 1 YEAR CAPPED PLACARDS)
 function renderHistory() {
+  const currentMonitorCard = document.getElementById('currentCycleMonitorCard');
   const historyList = document.getElementById('historyList');
-  if (!historyList) return;
+  if (!currentMonitorCard || !historyList) return;
 
   const refuseP = getActiveProvider('REFUSE');
   const refuseFee = (refuseP.fee || 9.76) * (1 + ((refuseP.gst || 9.0) / 100));
@@ -880,9 +881,9 @@ function renderHistory() {
   const currWaterTotal = currGroup.water.reduce((s, x) => s + (x.totalAmount || 0), 0);
   const currCycleGrandTotal = currElecTotal + currWaterTotal + refuseFee;
 
-  let html = `
-    <!-- Top Current Cycle Monitor Banner -->
-    <div class="current-cycle-card">
+  // Fixed Top Current Cycle Monitor Banner HTML
+  currentMonitorCard.innerHTML = `
+    <div class="current-cycle-card" style="margin-bottom: 0;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <span style="font-weight:800; font-size:0.92rem; color:#0f172a;">Current Cycle Monitor</span>
         <span style="font-weight:700; font-size:0.78rem; color:#64748b;">${currentCycleInfo.monthName}</span>
@@ -908,22 +909,27 @@ function renderHistory() {
         <span style="font-weight:800; font-size:1.18rem; color:#0f172a;">S$${currCycleGrandTotal.toFixed(2)}</span>
       </div>
     </div>
-
-    <!-- Past Calculations History Header -->
-    <div style="display:flex; justify-content:space-between; align-items:center; margin:16px 0 10px 0;">
-      <h3 style="font-size:0.92rem; font-weight:800; color:#f8fafc;">Past Calculations History</h3>
-      <span class="badge-cycle-info">Grouped: Cycle (⚡ ${elecCycleStartDay}th | 💧 ${waterCycleStartDay}th)</span>
-    </div>
   `;
 
+  // Sort billing cycles descending and limit to 1 year (most recent 12 cycle periods)
   const sortedKeys = Object.keys(cycleGroups).sort((a, b) => {
     return (cycleGroups[b].year * 12 + cycleGroups[b].month) - (cycleGroups[a].year * 12 + cycleGroups[a].month);
   });
 
-  if (sortedKeys.length === 0) {
+  const yearKeys = sortedKeys.slice(0, 12); // Keep max 1 year (12 months) of records
+
+  let html = `
+    <!-- Past Calculations History Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin:12px 0 10px 0;">
+      <h3 style="font-size:0.92rem; font-weight:800; color:#f8fafc;">Past Calculations History (1 Year)</h3>
+      <span class="badge-cycle-info">Grouped: Cycle (⚡ ${elecCycleStartDay}th | 💧 ${waterCycleStartDay}th)</span>
+    </div>
+  `;
+
+  if (yearKeys.length === 0) {
     html += `<p style="text-align:center; color:var(--text-muted); padding:16px; font-size:0.8rem;">No saved calculation logs found.</p>`;
   } else {
-    html += sortedKeys.map(key => {
+    html += yearKeys.map(key => {
       const g = cycleGroups[key];
       const elecTotal = g.elec.reduce((s, x) => s + (x.totalAmount || 0), 0);
       const elecUsage = g.elec.reduce((s, x) => s + (x.usage || 0), 0);
