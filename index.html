@@ -329,13 +329,17 @@
     </div>
 
     <!-- History & Cycle Monitor Screen -->
-    <div id="sectionHistory" class="tab-section hidden">
-      <div id="syncStatusBanner" style="margin-bottom: 12px; padding: 10px 14px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 12px; font-size: 0.78rem;">
-        <span style="color:#e2e8f0;">Sign in with Google to enable real-time cloud sync across devices.</span>
+    <div id="sectionHistory" class="tab-section history-container hidden">
+      <!-- Fixed Top History Header (Sync Status & Current Cycle Monitor Banner) -->
+      <div class="history-fixed-header">
+        <div id="syncStatusBanner" style="margin-bottom: 8px; padding: 10px 14px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 12px; font-size: 0.78rem;">
+          <span style="color:#e2e8f0;">Sign in with Google to enable real-time cloud sync across devices.</span>
+        </div>
+        <div id="currentCycleMonitorCard"></div>
       </div>
 
-      <!-- Rendered Current Cycle Monitor & Past Calculations Cards -->
-      <div id="historyList"></div>
+      <!-- Scrollable Past Calculations History Placards List (1 Year Capped) -->
+      <div class="history-scrollable-body" id="historyList"></div>
     </div>
 
   </main>
