@@ -191,8 +191,8 @@ function calculateElecEst() {
   const usageEst = document.getElementById('elecUsageEst');
   const totalEst = document.getElementById('elecTotalEst');
 
-  const prev = parseFloat(prevInput ? prevInput.value : 0) || 0;
-  const curr = parseFloat(currInput ? currInput.value : 0) || 0;
+  const prev = Math.round(parseFloat(prevInput ? prevInput.value : 0) || 0);
+  const curr = Math.round(parseFloat(currInput ? currInput.value : 0) || 0);
   const usage = Math.max(0, curr - prev);
 
   const provider = getActiveProvider('ELECTRICITY');
@@ -202,7 +202,7 @@ function calculateElecEst() {
   const baseAmount = usage * tariff;
   const total = baseAmount * (1 + (gst / 100));
 
-  if (usageEst) usageEst.innerText = `${usage.toFixed(1)} kWh`;
+  if (usageEst) usageEst.innerText = `${Math.round(usage)} kWh`;
   if (totalEst) totalEst.innerText = `S$${total.toFixed(2)}`;
 
   return { usage, total };
@@ -260,7 +260,7 @@ function autofillLatestReadings() {
   }
 
   if (elecVal !== '' && elecVal !== null && elecPrevInput) {
-    elecPrevInput.value = parseFloat(elecVal).toString();
+    elecPrevInput.value = Math.round(parseFloat(elecVal) || 0).toString();
     localStorage.setItem('utility_last_elec_reading', elecVal.toString());
     if (currentUser) {
       localStorage.setItem(`utility_last_elec_reading_${currentUser.uid}`, elecVal.toString());
@@ -635,16 +635,51 @@ if (btnWTiered) btnWTiered.addEventListener('click', () => {
   if (el) el.addEventListener('input', updateTierCalculatedTotals);
 });
 
-// Dynamic Reading Input Listeners for Real-time Total Calculation
-['waterPrevInput', 'waterCurrInput'].forEach(id => {
-  const el = document.getElementById(id);
-  if (el) el.addEventListener('input', calculateWaterEst);
-});
+// Dynamic Input Formatting & Estimation Handlers
+const waterPrevEl = document.getElementById('waterPrevInput');
+const waterCurrEl = document.getElementById('waterCurrInput');
+const elecPrevEl = document.getElementById('elecPrevInput');
+const elecCurrEl = document.getElementById('elecCurrInput');
 
-['elecPrevInput', 'elecCurrInput'].forEach(id => {
-  const el = document.getElementById(id);
-  if (el) el.addEventListener('input', calculateElecEst);
-});
+if (waterPrevEl) {
+  waterPrevEl.addEventListener('input', calculateWaterEst);
+  waterPrevEl.addEventListener('blur', () => {
+    if (waterPrevEl.value.trim() !== '') {
+      const v = parseFloat(waterPrevEl.value);
+      if (!isNaN(v)) waterPrevEl.value = v.toFixed(3);
+    }
+  });
+}
+
+if (waterCurrEl) {
+  waterCurrEl.addEventListener('input', calculateWaterEst);
+  waterCurrEl.addEventListener('blur', () => {
+    if (waterCurrEl.value.trim() !== '') {
+      const v = parseFloat(waterCurrEl.value);
+      if (!isNaN(v)) waterCurrEl.value = v.toFixed(3);
+    }
+  });
+}
+
+if (elecPrevEl) {
+  elecPrevEl.addEventListener('input', calculateElecEst);
+  elecPrevEl.addEventListener('blur', () => {
+    if (elecPrevEl.value.trim() !== '') {
+      const v = parseFloat(elecPrevEl.value);
+      if (!isNaN(v)) elecPrevEl.value = Math.round(v).toString();
+    }
+  });
+}
+
+if (elecCurrEl) {
+  elecCurrEl.addEventListener('input', calculateElecEst);
+  elecCurrEl.addEventListener('blur', () => {
+    if (elecCurrEl.value.trim() !== '') {
+      const v = parseFloat(elecCurrEl.value);
+      if (!isNaN(v)) elecCurrEl.value = Math.round(v).toString();
+    }
+  });
+}
 
 const modalSave = document.getElementById('modalBtnSave');
 if (modalSave) modalSave.addEventListener('click', () => {
@@ -751,15 +786,15 @@ if (btnWaterPlus) btnWaterPlus.addEventListener('click', () => {
   renderHistory();
 });
 
-// Tab Navigation
+// Tab Navigation (Electricity, Water, Rates, History)
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     const type = btn.getAttribute('data-type');
     document.querySelectorAll('.tab-section').forEach(sec => sec.classList.add('hidden'));
-    if (type === 'WATER') document.getElementById('sectionWater').classList.remove('hidden');
     if (type === 'ELECTRICITY') document.getElementById('sectionElectricity').classList.remove('hidden');
+    if (type === 'WATER') document.getElementById('sectionWater').classList.remove('hidden');
     if (type === 'RATES') document.getElementById('sectionRates').classList.remove('hidden');
     if (type === 'HISTORY') {
       document.getElementById('sectionHistory').classList.remove('hidden');
@@ -802,9 +837,11 @@ async function syncCycleToFirebase() {
 // Save Reading & Sync
 const btnSaveW = document.getElementById('btnSaveWater');
 if (btnSaveW) btnSaveW.addEventListener('click', async () => {
+  if (waterCurrEl && waterCurrEl.value.trim() !== '') {
+    waterCurrEl.value = parseFloat(waterCurrEl.value).toFixed(3);
+  }
+
   const est = calculateWaterEst();
-  const waterPrevEl = document.getElementById('waterPrevInput');
-  const waterCurrEl = document.getElementById('waterCurrInput');
   const prev = parseFloat(waterPrevEl ? waterPrevEl.value : 0) || 0;
   const curr = parseFloat(waterCurrEl ? waterCurrEl.value : 0) || 0;
   if (curr <= 0) { alert('Please enter a valid current reading.'); return; }
@@ -817,10 +854,10 @@ if (btnSaveW) btnSaveW.addEventListener('click', async () => {
     id: 'rd_' + Date.now(),
     type: 'WATER',
     providerName: activeWaterP.name,
-    previousReading: prev,
-    currentReading: curr,
-    reading: curr,
-    usage: est.usage,
+    previousReading: parseFloat(prev.toFixed(3)),
+    currentReading: parseFloat(curr.toFixed(3)),
+    reading: parseFloat(curr.toFixed(3)),
+    usage: parseFloat(est.usage.toFixed(3)),
     totalAmount: est.total,
     readingDate: Date.now(),
     timestamp: Date.now(),
@@ -830,19 +867,21 @@ if (btnSaveW) btnSaveW.addEventListener('click', async () => {
 
   await saveAndSyncReading(item);
   if (waterPrevEl) waterPrevEl.value = curr.toFixed(3);
-  localStorage.setItem('utility_last_water_reading', curr.toString());
-  if (currentUser) localStorage.setItem(`utility_last_water_reading_${currentUser.uid}`, curr.toString());
+  localStorage.setItem('utility_last_water_reading', curr.toFixed(3));
+  if (currentUser) localStorage.setItem(`utility_last_water_reading_${currentUser.uid}`, curr.toFixed(3));
   if (waterCurrEl) waterCurrEl.value = '';
   alert('Water reading saved and synced!');
 });
 
 const btnSaveE = document.getElementById('btnSaveElectricity');
 if (btnSaveE) btnSaveE.addEventListener('click', async () => {
+  if (elecCurrEl && elecCurrEl.value.trim() !== '') {
+    elecCurrEl.value = Math.round(parseFloat(elecCurrEl.value)).toString();
+  }
+
   const est = calculateElecEst();
-  const elecPrevEl = document.getElementById('elecPrevInput');
-  const elecCurrEl = document.getElementById('elecCurrInput');
-  const prev = parseFloat(elecPrevEl ? elecPrevEl.value : 0) || 0;
-  const curr = parseFloat(elecCurrEl ? elecCurrEl.value : 0) || 0;
+  const prev = Math.round(parseFloat(elecPrevEl ? elecPrevEl.value : 0) || 0);
+  const curr = Math.round(parseFloat(elecCurrEl ? elecCurrEl.value : 0) || 0);
   if (curr <= 0) { alert('Please enter a valid current reading.'); return; }
 
   const elecCycleInp = document.getElementById('elecCycleStartInput');
@@ -856,7 +895,7 @@ if (btnSaveE) btnSaveE.addEventListener('click', async () => {
     previousReading: prev,
     currentReading: curr,
     reading: curr,
-    usage: est.usage,
+    usage: Math.round(est.usage),
     totalAmount: est.total,
     readingDate: Date.now(),
     timestamp: Date.now(),
@@ -1012,7 +1051,7 @@ function renderHistory() {
             <div class="history-subcard-elec">
               <div style="font-weight:700; font-size:0.76rem; color:#dc2626; display:flex; align-items:center; gap:4px;">⚡ Electricity</div>
               <div style="font-weight:800; font-size:0.92rem; color:#dc2626; margin:4px 0 2px 0;">S$${elecTotal.toFixed(4)}</div>
-              <div style="font-size:0.72rem; color:#0f172a; font-weight:700;">${elecUsage.toFixed(1)} kWh</div>
+              <div style="font-size:0.72rem; color:#0f172a; font-weight:700;">${Math.round(elecUsage)} kWh</div>
               <div style="font-size:0.68rem; color:#94a3b8; margin-top:2px;">${g.elec.length} entries</div>
             </div>
 
@@ -1120,7 +1159,7 @@ function renderBreakdownModalContent() {
 
         <div style="display:flex; justify-content:space-between; font-size:0.74rem; color:#64748b; padding:6px 0; border-top:1px solid #f1f5f9;">
           <span>Providers: <strong style="color:#0f172a;">${elecItems[0]?.providerName || activeElecP.name}</strong></span>
-          <span>Total Usage: <strong style="color:#0f172a;">${elecUsage.toFixed(1)} kWh</strong></span>
+          <span>Total Usage: <strong style="color:#0f172a;">${Math.round(elecUsage)} kWh</strong></span>
           <span>Est. Bill: <strong style="color:#ef4444;">S$${elecTotal.toFixed(4)}</strong></span>
         </div>
 
@@ -1130,7 +1169,7 @@ function renderBreakdownModalContent() {
             <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:0.74rem;">
               <div>
                 <span style="color:#0f172a; font-weight:700;">${formatDateDMY(item.readingDate || item.timestamp)}</span>
-                <span style="color:#64748b; margin-left:6px;">(${item.previousReading} ➔ ${item.currentReading})</span>
+                <span style="color:#64748b; margin-left:6px;">(${Math.round(item.previousReading)} ➔ ${Math.round(item.currentReading)})</span>
               </div>
               <div style="display:flex; align-items:center; gap:8px;">
                 <strong style="color:#ef4444;">S$${(item.totalAmount || 0).toFixed(2)}</strong>
@@ -1173,7 +1212,7 @@ function renderBreakdownModalContent() {
             <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:0.74rem;">
               <div>
                 <span style="color:#0f172a; font-weight:700;">${formatDateDMY(item.readingDate || item.timestamp)}</span>
-                <span style="color:#64748b; margin-left:6px;">(${item.previousReading} ➔ ${item.currentReading})</span>
+                <span style="color:#64748b; margin-left:6px;">(${parseFloat(item.previousReading || 0).toFixed(3)} ➔ ${parseFloat(item.currentReading || 0).toFixed(3)})</span>
               </div>
               <div style="display:flex; align-items:center; gap:8px;">
                 <strong style="color:#0284c7;">S$${(item.totalAmount || 0).toFixed(2)}</strong>
