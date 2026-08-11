@@ -14,6 +14,20 @@ let providersList = JSON.parse(localStorage.getItem('utility_providers')) || [];
 let elecCycleStartDay = parseInt(localStorage.getItem('utility_elec_cycle_start_day'), 10) || 28;
 let waterCycleStartDay = parseInt(localStorage.getItem('utility_water_cycle_start_day'), 10) || 28;
 
+// Populate Defaults if List is Empty or Missing Utility Types
+function ensureDefaultProviders() {
+  if (!providersList.some(p => p.type === 'REFUSE')) {
+    providersList.push({ id: 'p_refuse_default', type: 'REFUSE', name: 'Refuse Fee', fee: 9.76, gst: 9.0, isDefault: true, order: 0 });
+  }
+  if (!providersList.some(p => p.type === 'ELECTRICITY')) {
+    providersList.push({ id: 'p_elec_default', type: 'ELECTRICITY', name: 'SP Group', tariff: 0.2324, gst: 9.0, isDefault: true, order: 0 });
+  }
+  if (!providersList.some(p => p.type === 'WATER')) {
+    providersList.push({ id: 'p_water_default', type: 'WATER', name: 'PUB Water', model: 'SG_TIERED', t1Tariff: 1.21, t1Wct: 0.72, t1Wbf: 1.09, t2Tariff: 1.81, t2Wct: 1.18, t2Wbf: 1.40, flatRate: 1.20, gst: 9.0, isDefault: true, order: 0 });
+  }
+  normalizeProviderOrders();
+}
+
 // Explicit Order Normalization
 function normalizeProviderOrders() {
   if (!providersList || !providersList.length) return;
@@ -208,21 +222,15 @@ formatWaterInputAutoDecimal(document.getElementById('waterCurrInput'));
 formatElecInputWholeNumber(document.getElementById('elecPrevInput'));
 formatElecInputWholeNumber(document.getElementById('elecCurrInput'));
 
-// Auto-fill Previous Reading from User History
+// Auto-fill Previous & Current Readings
 function autofillLatestReadings() {
   const waterPrevInput = document.getElementById('waterPrevInput');
+  const waterCurrInput = document.getElementById('waterCurrInput');
   const elecPrevInput = document.getElementById('elecPrevInput');
+  const elecCurrInput = document.getElementById('elecCurrInput');
 
   let waterVal = '';
   let elecVal = '';
-
-  if (currentUser) {
-    waterVal = localStorage.getItem(`utility_last_water_reading_${currentUser.uid}`) || '';
-    elecVal = localStorage.getItem(`utility_last_elec_reading_${currentUser.uid}`) || '';
-  } else {
-    waterVal = localStorage.getItem('utility_last_water_reading') || '';
-    elecVal = localStorage.getItem('utility_last_elec_reading') || '';
-  }
 
   if (userReadings && userReadings.length > 0) {
     const waterReadings = userReadings
@@ -242,14 +250,27 @@ function autofillLatestReadings() {
       const latest = elecReadings[0];
       elecVal = latest.currentReading !== undefined ? latest.currentReading : latest.reading;
     }
+  } else if (currentUser) {
+    waterVal = localStorage.getItem(`utility_last_water_reading_${currentUser.uid}`) || '';
+    elecVal = localStorage.getItem(`utility_last_elec_reading_${currentUser.uid}`) || '';
   }
 
+  // Populate Previous Readings (or set empty if no records)
   if (waterPrevInput) {
     waterPrevInput.value = (waterVal !== '' && waterVal !== null) ? parseFloat(waterVal).toFixed(3) : '';
   }
 
   if (elecPrevInput) {
     elecPrevInput.value = (elecVal !== '' && elecVal !== null) ? Math.round(parseFloat(elecVal) || 0).toString() : '';
+  }
+
+  // Current Reading boxes are ALWAYS cleared to empty for new entry / when no records exist
+  if (waterCurrInput) {
+    waterCurrInput.value = '';
+  }
+
+  if (elecCurrInput) {
+    elecCurrInput.value = '';
   }
 
   calculateWaterEst();
@@ -803,7 +824,7 @@ async function saveAndSyncReading(item) {
 // Modal state for Detailed Breakdown
 let activeBreakdownGroupKey = null;
 
-// RENDER HISTORY SCREEN (FIXED TOP MONITOR & 1 YEAR CAPPED PLACARDS)
+// RENDER HISTORY SCREEN
 function renderHistory() {
   const currentMonitorCard = document.getElementById('currentCycleMonitorCard');
   const historyList = document.getElementById('historyList');
