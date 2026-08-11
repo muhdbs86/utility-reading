@@ -1,26 +1,47 @@
-let db = null, auth = null, currentUser = null, userReadings = [];
-
-// DOM & LocalStorage Helpers
-const $ = id => document.getElementById(id);
-const getNum = id => parseFloat($(id)?.value || 0) || 0;
-const setStorage = (k, v) => localStorage.setItem(k, typeof v === 'object' ? JSON.stringify(v) : v.toString());
-const getStorage = k => localStorage.getItem(k);
+let db = null;
+let auth = null;
+let currentUser = null;
+let userReadings = [];
 
 // Prevent multi-touch gesture zoom
-document.addEventListener('gesturestart', e => e.preventDefault());
+document.addEventListener('gesturestart', (e) => {
+  e.preventDefault();
+});
 
-// Application State
-let providersList = JSON.parse(getStorage('utility_providers') || '[]');
-let elecCycleStartDay = parseInt(getStorage('utility_elec_cycle_start_day'), 10) || 28;
-let waterCycleStartDay = parseInt(getStorage('utility_water_cycle_start_day'), 10) || 28;
+// Providers List State
+let providersList = JSON.parse(localStorage.getItem('utility_providers')) || [];
+
+let elecCycleStartDay = parseInt(localStorage.getItem('utility_elec_cycle_start_day'), 10) || 28;
+let waterCycleStartDay = parseInt(localStorage.getItem('utility_water_cycle_start_day'), 10) || 28;
+
+// Populate Defaults if List is Empty or Missing Utility Types
+function ensureDefaultProviders() {
+  if (!providersList.some(p => p.type === 'REFUSE')) {
+    providersList.push({ id: 'p_refuse_default', type: 'REFUSE', name: 'Refuse Fee', fee: 9.76, gst: 9.0, isDefault: true, order: 0 });
+  }
+  if (!providersList.some(p => p.type === 'ELECTRICITY')) {
+    providersList.push({ id: 'p_elec_default', type: 'ELECTRICITY', name: 'SP Group', tariff: 0.2324, gst: 9.0, isDefault: true, order: 0 });
+  }
+  if (!providersList.some(p => p.type === 'WATER')) {
+    providersList.push({ id: 'p_water_default', type: 'WATER', name: 'PUB Water', model: 'SG_TIERED', t1Tariff: 1.21, t1Wct: 0.72, t1Wbf: 1.09, t2Tariff: 1.81, t2Wct: 1.18, t2Wbf: 1.40, flatRate: 1.20, gst: 9.0, isDefault: true, order: 0 });
+  }
+  normalizeProviderOrders();
+}
 
 // Explicit Order Normalization
 function normalizeProviderOrders() {
-  const catMap = { 'REFUSE': 0, 'ELECTRICITY': 1, 'WATER': 2 };
-  providersList.sort((a, b) => (catMap[a.type] ?? 99) - (catMap[b.type] ?? 99) || (a.order ?? 999) - (b.order ?? 999));
-  
+  const categoryOrder = { 'REFUSE': 0, 'ELECTRICITY': 1, 'WATER': 2 };
+
+  providersList.sort((a, b) => {
+    const catA = categoryOrder[a.type] !== undefined ? categoryOrder[a.type] : 99;
+    const catB = categoryOrder[b.type] !== undefined ? categoryOrder[b.type] : 99;
+    if (catA !== catB) return catA - catB;
+    return (a.order !== undefined ? a.order : 999) - (b.order !== undefined ? b.order : 999);
+  });
+
   ['REFUSE', 'ELECTRICITY', 'WATER'].forEach(type => {
-    providersList.filter(p => p.type === type).forEach((p, idx) => {
+    const items = providersList.filter(p => p.type === type);
+    items.forEach((p, idx) => {
       p.order = idx;
       p.isDefault = (idx === 0);
     });
@@ -28,137 +49,232 @@ function normalizeProviderOrders() {
 }
 
 function getActiveProvider(type) {
-  return providersList.find(p => p.type === type && p.isDefault) ||
-         providersList.find(p => p.type === type) ||
-         (type === 'WATER' ? { name: 'PUB Water', model: 'SG_TIERED', t1Tariff: 1.21, t1Wct: 0.72, t1Wbf: 1.09, t2Tariff: 1.81, t2Wct: 1.18, t2Wbf: 1.40, flatRate: 1.20, gst: 9.0 } :
-          type === 'ELECTRICITY' ? { name: 'SP Group', tariff: 0.2324, gst: 9.0 } :
-          { name: 'Refuse Fee', fee: 9.76, gst: 9.0 });
+  ensureDefaultProviders();
+  const match = providersList.find(p => p.type === type && p.isDefault);
+  if (match) return match;
+  const fallback = providersList.find(p => p.type === type);
+  if (fallback) return fallback;
+  if (type === 'WATER') {
+    return { name: 'PUB Water', model: 'SG_TIERED', t1Tariff: 1.21, t1Wct: 0.72, t1Wbf: 1.09, t2Tariff: 1.81, t2Wct: 1.18, t2Wbf: 1.40, flatRate: 1.20, gst: 9.0 };
+  }
+  if (type === 'ELECTRICITY') {
+    return { name: 'SP Group', tariff: 0.2324, gst: 9.0 };
+  }
+  return { name: 'Refuse Fee', fee: 9.76, gst: 9.0 };
 }
 
 function getDefaultCycleStartDate(type = 'WATER') {
   const cycleDay = type === 'ELECTRICITY' ? elecCycleStartDay : waterCycleStartDay;
   const today = new Date();
-  let year = today.getFullYear(), month = today.getMonth();
-  if (today.getDate() < cycleDay) { month -= 1; if (month < 0) { month = 11; year -= 1; } }
-  return `${year}-${String(month + 1).padStart(2, '0')}-${String(cycleDay).padStart(2, '0')}`;
+  let year = today.getFullYear();
+  let month = today.getMonth();
+  if (today.getDate() < cycleDay) {
+    month -= 1;
+    if (month < 0) {
+      month = 11;
+      year -= 1;
+    }
+  }
+  const yyyy = year;
+  const mm = String(month + 1).padStart(2, '0');
+  const dd = String(cycleDay).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 function formatDateDMY(dateMs) {
   const dt = new Date(dateMs || Date.now());
-  return `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`;
+  const dd = String(dt.getDate()).padStart(2, '0');
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const yyyy = dt.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
 }
 
 function getReadingCycleInfo(dateMs, cycleDay = 28) {
   const dt = new Date(dateMs || Date.now());
-  let year = dt.getFullYear(), month = dt.getMonth();
-  if (dt.getDate() < cycleDay) { month -= 1; if (month < 0) { month = 11; year -= 1; } }
+  let year = dt.getFullYear();
+  let month = dt.getMonth();
+  
+  if (dt.getDate() < cycleDay) {
+    month -= 1;
+    if (month < 0) {
+      month = 11;
+      year -= 1;
+    }
+  }
   
   const cycleDate = new Date(year, month, 1);
   const monthName = cycleDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  
   const startDate = new Date(year, month, cycleDay);
-  let endMonth = month + 1, endYear = year;
-  if (endMonth > 11) { endMonth = 0; endYear += 1; }
+  let endMonth = month + 1;
+  let endYear = year;
+  if (endMonth > 11) {
+    endMonth = 0;
+    endYear += 1;
+  }
   const endDate = new Date(endYear, endMonth, cycleDay - 1);
   
-  return { monthName, year, month, rangeStr: `${formatDateDMY(startDate.getTime())} - ${formatDateDMY(endDate.getTime())}` };
+  const rangeStr = `${formatDateDMY(startDate.getTime())} - ${formatDateDMY(endDate.getTime())}`;
+  
+  return { monthName, year, month, rangeStr };
 }
 
-// Calculations
+// Calculation Helpers
 function calculateWaterEst() {
-  const usage = Math.max(0, getNum('waterCurrInput') - getNum('waterPrevInput'));
-  const p = getActiveProvider('WATER');
-  let base = 0;
+  const prevInput = document.getElementById('waterPrevInput');
+  const currInput = document.getElementById('waterCurrInput');
+  const usageEst = document.getElementById('waterUsageEst');
+  const taxEst = document.getElementById('waterTaxEst');
+  const totalEst = document.getElementById('waterTotalEst');
 
-  if (p.model === 'FLAT') {
-    base = usage * (p.flatRate || 1.20);
+  const prev = parseFloat(prevInput ? prevInput.value : 0) || 0;
+  const curr = parseFloat(currInput ? currInput.value : 0) || 0;
+  const usage = Math.max(0, curr - prev);
+
+  const provider = getActiveProvider('WATER');
+  let baseAmount = 0;
+
+  if (provider.model === 'FLAT') {
+    baseAmount = usage * (provider.flatRate || 1.20);
   } else {
-    const t1 = (p.t1Tariff || 1.21) + (p.t1Wct || 0.72) + (p.t1Wbf || 1.09);
-    const t2 = (p.t2Tariff || 1.81) + (p.t2Wct || 1.18) + (p.t2Wbf || 1.40);
-    base = usage <= 40 ? usage * t1 : (40 * t1) + ((usage - 40) * t2);
+    const t1Tariff = (provider.t1Tariff || 1.21) + (provider.t1Wct || 0.72) + (provider.t1Wbf || 1.09);
+    const t2Tariff = (provider.t2Tariff || 1.81) + (provider.t2Wct || 1.18) + (provider.t2Wbf || 1.40);
+
+    if (usage <= 40) {
+      baseAmount = usage * t1Tariff;
+    } else {
+      baseAmount = (40 * t1Tariff) + ((usage - 40) * t2Tariff);
+    }
   }
 
-  const tax = base * ((p.gst || 9.0) / 100);
-  const total = base + tax;
+  const tax = baseAmount * ((provider.gst || 9.0) / 100);
+  const total = baseAmount + tax;
 
-  if ($('waterUsageEst')) $('waterUsageEst').innerText = `${usage.toFixed(3)} m³`;
-  if ($('waterTaxEst')) $('waterTaxEst').innerText = `S$${tax.toFixed(2)}`;
-  if ($('waterTotalEst')) $('waterTotalEst').innerText = `S$${total.toFixed(2)}`;
+  if (usageEst) usageEst.innerText = `${usage.toFixed(3)} m³`;
+  if (taxEst) taxEst.innerText = `S$${tax.toFixed(2)}`;
+  if (totalEst) totalEst.innerText = `S$${total.toFixed(2)}`;
 
   return { usage, tax, total };
 }
 
 function calculateElecEst() {
-  const usage = Math.max(0, Math.round(getNum('elecCurrInput') - getNum('elecPrevInput')));
-  const p = getActiveProvider('ELECTRICITY');
-  const base = usage * (p.tariff || 0.2324);
-  const total = base * (1 + ((p.gst || 9.0) / 100));
+  const prevInput = document.getElementById('elecPrevInput');
+  const currInput = document.getElementById('elecCurrInput');
+  const usageEst = document.getElementById('elecUsageEst');
+  const totalEst = document.getElementById('elecTotalEst');
 
-  if ($('elecUsageEst')) $('elecUsageEst').innerText = `${usage} kWh`;
-  if ($('elecTotalEst')) $('elecTotalEst').innerText = `S$${total.toFixed(2)}`;
+  const prev = Math.round(parseFloat(prevInput ? prevInput.value : 0) || 0);
+  const curr = Math.round(parseFloat(currInput ? currInput.value : 0) || 0);
+  const usage = Math.max(0, curr - prev);
+
+  const provider = getActiveProvider('ELECTRICITY');
+  const tariff = provider.tariff || 0.2324;
+  const gst = provider.gst || 9.0;
+
+  const baseAmount = usage * tariff;
+  const total = baseAmount * (1 + (gst / 100));
+
+  if (usageEst) usageEst.innerText = `${Math.round(usage)} kWh`;
+  if (totalEst) totalEst.innerText = `S$${total.toFixed(2)}`;
 
   return { usage, total };
 }
 
-// Formatters
-function formatWaterInputAutoDecimal(el) {
-  if (!el) return;
-  el.addEventListener('input', () => {
-    let digits = el.value.replace(/\D/g, '');
-    if (!digits || parseInt(digits, 10) === 0) { el.value = ''; } 
-    else {
+// Dynamic Input Formatting Helpers
+function formatWaterInputAutoDecimal(inputEl) {
+  if (!inputEl) return;
+  inputEl.addEventListener('input', () => {
+    let raw = inputEl.value;
+    let digits = raw.replace(/\D/g, ''); // Extract numbers only
+    if (!digits || parseInt(digits, 10) === 0) {
+      inputEl.value = '';
+    } else {
       if (digits.length > 9) digits = digits.slice(0, 9);
-      el.value = (parseInt(digits, 10) / 1000).toFixed(3);
+      const num = parseInt(digits, 10);
+      inputEl.value = (num / 1000).toFixed(3);
     }
     calculateWaterEst();
   });
 }
 
-function formatElecInputWholeNumber(el) {
-  if (!el) return;
-  el.addEventListener('input', () => {
-    let digits = el.value.replace(/\D/g, '');
-    if (!digits) { el.value = ''; } 
-    else {
+function formatElecInputWholeNumber(inputEl) {
+  if (!inputEl) return;
+  inputEl.addEventListener('input', () => {
+    let raw = inputEl.value;
+    let digits = raw.replace(/\D/g, ''); // Extract numbers only
+    if (!digits) {
+      inputEl.value = '';
+    } else {
       if (digits.length > 8) digits = digits.slice(0, 8);
-      el.value = parseInt(digits, 10).toString();
+      inputEl.value = parseInt(digits, 10).toString();
     }
     calculateElecEst();
   });
 }
 
-formatWaterInputAutoDecimal($('waterPrevInput'));
-formatWaterInputAutoDecimal($('waterCurrInput'));
-formatElecInputWholeNumber($('elecPrevInput'));
-formatElecInputWholeNumber($('elecCurrInput'));
+// Bind Input Formatters
+formatWaterInputAutoDecimal(document.getElementById('waterPrevInput'));
+formatWaterInputAutoDecimal(document.getElementById('waterCurrInput'));
+formatElecInputWholeNumber(document.getElementById('elecPrevInput'));
+formatElecInputWholeNumber(document.getElementById('elecCurrInput'));
 
-// Autofill Previous Readings
+// Auto-fill Previous Reading from History & Local Storage
 function autofillLatestReadings() {
-  let waterVal = getStorage('utility_last_water_reading') || '';
-  let elecVal = getStorage('utility_last_elec_reading') || '';
+  const waterPrevInput = document.getElementById('waterPrevInput');
+  const elecPrevInput = document.getElementById('elecPrevInput');
 
+  let waterVal = localStorage.getItem('utility_last_water_reading') || '';
   if (currentUser) {
-    waterVal = getStorage(`utility_last_water_reading_${currentUser.uid}`) || waterVal;
-    elecVal = getStorage(`utility_last_elec_reading_${currentUser.uid}`) || elecVal;
+    const userWater = localStorage.getItem(`utility_last_water_reading_${currentUser.uid}`);
+    if (userWater) waterVal = userWater;
   }
 
-  if (userReadings?.length) {
-    const wLatest = userReadings.filter(r => r.type === 'WATER' && (r.currentReading ?? r.reading) != null).sort((a,b)=>(b.readingDate||0)-(a.readingDate||0))[0];
-    if (wLatest) waterVal = wLatest.currentReading ?? wLatest.reading;
-
-    const eLatest = userReadings.filter(r => r.type === 'ELECTRICITY' && (r.currentReading ?? r.reading) != null).sort((a,b)=>(b.readingDate||0)-(a.readingDate||0))[0];
-    if (eLatest) elecVal = eLatest.currentReading ?? eLatest.reading;
+  let elecVal = localStorage.getItem('utility_last_elec_reading') || '';
+  if (currentUser) {
+    const userElec = localStorage.getItem(`utility_last_elec_reading_${currentUser.uid}`);
+    if (userElec) elecVal = userElec;
   }
 
-  if (waterVal !== '' && $('waterPrevInput')) {
-    $('waterPrevInput').value = parseFloat(waterVal).toFixed(3);
-    setStorage('utility_last_water_reading', waterVal);
-    if (currentUser) setStorage(`utility_last_water_reading_${currentUser.uid}`, waterVal);
+  if (userReadings && userReadings.length > 0) {
+    const waterReadings = userReadings
+      .filter(r => r.type === 'WATER' && (r.currentReading !== undefined || r.reading !== undefined))
+      .sort((a, b) => (b.readingDate || b.timestamp || 0) - (a.readingDate || a.timestamp || 0));
+
+    if (waterReadings.length > 0) {
+      const latest = waterReadings[0];
+      const v = latest.currentReading !== undefined ? latest.currentReading : latest.reading;
+      if (v !== undefined && v !== null && v !== '') {
+        waterVal = v;
+      }
+    }
+
+    const elecReadings = userReadings
+      .filter(r => r.type === 'ELECTRICITY' && (r.currentReading !== undefined || r.reading !== undefined))
+      .sort((a, b) => (b.readingDate || b.timestamp || 0) - (a.readingDate || a.timestamp || 0));
+
+    if (elecReadings.length > 0) {
+      const latest = elecReadings[0];
+      const v = latest.currentReading !== undefined ? latest.currentReading : latest.reading;
+      if (v !== undefined && v !== null && v !== '') {
+        elecVal = v;
+      }
+    }
   }
 
-  if (elecVal !== '' && $('elecPrevInput')) {
-    $('elecPrevInput').value = Math.round(parseFloat(elecVal) || 0).toString();
-    setStorage('utility_last_elec_reading', elecVal);
-    if (currentUser) setStorage(`utility_last_elec_reading_${currentUser.uid}`, elecVal);
+  if (waterVal !== '' && waterVal !== null && waterPrevInput) {
+    waterPrevInput.value = parseFloat(waterVal).toFixed(3);
+    localStorage.setItem('utility_last_water_reading', waterVal.toString());
+    if (currentUser) {
+      localStorage.setItem(`utility_last_water_reading_${currentUser.uid}`, waterVal.toString());
+    }
+  }
+
+  if (elecVal !== '' && elecVal !== null && elecPrevInput) {
+    elecPrevInput.value = Math.round(parseFloat(elecVal) || 0).toString();
+    localStorage.setItem('utility_last_elec_reading', elecVal.toString());
+    if (currentUser) {
+      localStorage.setItem(`utility_last_elec_reading_${currentUser.uid}`, elecVal.toString());
+    }
   }
 
   calculateWaterEst();
@@ -166,202 +282,486 @@ function autofillLatestReadings() {
 }
 
 function updateCycleLabels() {
-  const getSuffix = d => `${d}${d===1?'st':d===2?'nd':d===3?'rd':'th'}`;
-  if ($('elecCycleStartDayLabel')) $('elecCycleStartDayLabel').innerText = getSuffix(elecCycleStartDay);
-  if ($('waterCycleStartDayLabel')) $('waterCycleStartDayLabel').innerText = getSuffix(waterCycleStartDay);
-  if ($('waterCycleStartInput') && !$('waterCycleStartInput').value) $('waterCycleStartInput').value = getDefaultCycleStartDate('WATER');
-  if ($('elecCycleStartInput') && !$('elecCycleStartInput').value) $('elecCycleStartInput').value = getDefaultCycleStartDate('ELECTRICITY');
+  const elecDayStr = `${elecCycleStartDay}${elecCycleStartDay === 1 ? 'st' : elecCycleStartDay === 2 ? 'nd' : elecCycleStartDay === 3 ? 'rd' : 'th'}`;
+  const waterDayStr = `${waterCycleStartDay}${waterCycleStartDay === 1 ? 'st' : waterCycleStartDay === 2 ? 'nd' : waterCycleStartDay === 3 ? 'rd' : 'th'}`;
+  
+  const elecLabel = document.getElementById('elecCycleStartDayLabel');
+  const waterLabel = document.getElementById('waterCycleStartDayLabel');
+  if (elecLabel) elecLabel.innerText = elecDayStr;
+  if (waterLabel) waterLabel.innerText = waterDayStr;
+  
+  const waterInput = document.getElementById('waterCycleStartInput');
+  const elecInput = document.getElementById('elecCycleStartInput');
+  if (waterInput && !waterInput.value) waterInput.value = getDefaultCycleStartDate('WATER');
+  if (elecInput && !elecInput.value) elecInput.value = getDefaultCycleStartDate('ELECTRICITY');
 }
 
 function updateRateLabels() {
-  const wP = getActiveProvider('WATER'), eP = getActiveProvider('ELECTRICITY');
-  if ($('activeWaterProviderLabel')) $('activeWaterProviderLabel').innerText = `${wP.name} (${(wP.model==='SG_TIERED'||wP.model==='TIERED')?'Tiered':'Flat'})`;
-  if ($('activeElecProviderLabel')) $('activeElecProviderLabel').innerText = `${eP.name} (Flat)`;
-  if ($('elecTariffLabel')) $('elecTariffLabel').innerText = `$${(eP.tariff || 0).toFixed(4)} / kWh`;
+  const waterP = getActiveProvider('WATER');
+  const elecP = getActiveProvider('ELECTRICITY');
+  const waterLbl = document.getElementById('activeWaterProviderLabel');
+  const elecLbl = document.getElementById('activeElecProviderLabel');
+  const elecTariffLbl = document.getElementById('elecTariffLabel');
+
+  if (waterLbl) waterLbl.innerText = `${waterP.name} (${(waterP.model === 'SG_TIERED' || waterP.model === 'TIERED') ? 'Tiered' : 'Flat'})`;
+  if (elecLbl) elecLbl.innerText = `${elecP.name} (Flat)`;
+  if (elecTariffLbl) elecTariffLbl.innerText = `$${(elecP.tariff || 0).toFixed(4)} / kWh`;
 }
 
-function renderProviderActionControls(p) {
+function renderProviderActionControls(p, idx, totalItems) {
   return `
     <div style="display:flex; gap:6px; align-items:center;">
-      <button type="button" data-action="edit-provider" data-id="${p.id}" class="btn-icon-action"><span class="material-icons-round">edit</span></button>
-      <button type="button" data-action="delete-provider" data-id="${p.id}" class="btn-icon-action text-danger"><span class="material-icons-round">delete</span></button>
-    </div>`;
+      <button type="button" data-action="edit-provider" data-id="${p.id}" class="btn-icon-action" title="Edit Provider">
+        <span class="material-icons-round" style="pointer-events:none; font-size:20px;">edit</span>
+      </button>
+      <button type="button" data-action="delete-provider" data-id="${p.id}" class="btn-icon-action text-danger" title="Delete Provider">
+        <span class="material-icons-round" style="pointer-events:none; font-size:20px;">delete</span>
+      </button>
+    </div>
+  `;
 }
 
 function saveProvidersState() {
   normalizeProviderOrders();
-  setStorage('utility_providers', providersList);
-  if (currentUser) setStorage(`utility_providers_${currentUser.uid}`, providersList);
-  syncFirebase('providers', providersList);
+  localStorage.setItem('utility_providers', JSON.stringify(providersList));
+  if (currentUser) {
+    localStorage.setItem(`utility_providers_${currentUser.uid}`, JSON.stringify(providersList));
+  }
+  syncProvidersToFirebase();
   renderProviders();
   updateRateLabels();
   calculateWaterEst();
   calculateElecEst();
 }
 
+// FULL RESTORED PROVIDERS & RATES RENDERER
 function renderProviders() {
+  const refuseList = document.getElementById('refuseProvidersList');
+  const elecList = document.getElementById('elecProvidersList');
+  const waterList = document.getElementById('waterProvidersList');
+
+  if (!refuseList || !elecList || !waterList) return;
+
+  ensureDefaultProviders();
   normalizeProviderOrders();
-  ['REFUSE', 'ELECTRICITY', 'WATER'].forEach(type => {
-    const listEl = $(`${type.toLowerCase()}ProvidersList`);
-    if (!listEl) return;
-    const items = providersList.filter(p => p.type === type);
-    
-    listEl.innerHTML = !items.length ? `<p style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">No ${type.toLowerCase()} providers added.</p>` :
-      items.map(p => `
+
+  const refuseItems = providersList.filter(p => p.type === 'REFUSE').sort((a, b) => (a.order || 0) - (b.order || 0));
+  const elecItems = providersList.filter(p => p.type === 'ELECTRICITY').sort((a, b) => (a.order || 0) - (b.order || 0));
+  const waterItems = providersList.filter(p => p.type === 'WATER').sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  refuseList.innerHTML = refuseItems.length === 0 
+    ? `<p style="font-size:0.75rem; color:var(--text-muted); font-style:italic; padding:4px 0;">No refuse providers added.</p>`
+    : refuseItems.map((p, idx) => `
+    <div class="provider-card-ui">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+        <div style="display:flex; flex-direction:column; gap:2px;">
+          <strong style="font-size:0.78rem; font-weight:700; color:#0f172a; line-height:1.2;">${p.name}</strong>
+          ${p.isDefault ? '<div style="margin-top:2px;"><span class="badge-default">★ Default</span></div>' : ''}
+        </div>
+        ${renderProviderActionControls(p, idx, refuseItems.length)}
+      </div>
+      <div style="background:#f8fafc; padding:8px 10px; border-radius:10px; font-size:0.76rem;">
+        <div class="card-row-item"><span>Usage Fee</span><strong>S$${(p.fee || 0).toFixed(4)} / month</strong></div>
+        <div class="card-row-item"><span>GST</span><strong>${(p.gst || 0).toFixed(1)}%</strong></div>
+      </div>
+    </div>
+  `).join('');
+
+  elecList.innerHTML = elecItems.length === 0 
+    ? `<p style="font-size:0.75rem; color:var(--text-muted); font-style:italic; padding:4px 0;">No electricity providers added.</p>`
+    : elecItems.map((p, idx) => `
+    <div class="provider-card-ui">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+        <div style="display:flex; flex-direction:column; gap:2px;">
+          <strong style="font-size:0.78rem; font-weight:700; color:#0f172a; line-height:1.2;">${p.name}</strong>
+          ${p.isDefault ? '<div style="margin-top:2px;"><span class="badge-default">★ Default</span></div>' : ''}
+        </div>
+        ${renderProviderActionControls(p, idx, elecItems.length)}
+      </div>
+      <div style="background:#f8fafc; padding:8px 10px; border-radius:10px; font-size:0.76rem;">
+        <div class="card-row-item"><span>Usage Fee</span><strong>S$${(p.tariff || 0).toFixed(4)} / kWh</strong></div>
+        <div class="card-row-item"><span>GST</span><strong>${(p.gst || 0).toFixed(1)}%</strong></div>
+      </div>
+    </div>
+  `).join('');
+
+  waterList.innerHTML = waterItems.length === 0 
+    ? `<p style="font-size:0.75rem; color:var(--text-muted); font-style:italic; padding:4px 0;">No water providers added.</p>`
+    : waterItems.map((p, idx) => {
+    if (p.model === 'FLAT') {
+      return `
         <div class="provider-card-ui">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-            <div>
-              <strong style="font-size:0.78rem; font-weight:700; color:#0f172a;">${p.name}</strong>
+            <div style="display:flex; flex-direction:column; gap:2px;">
+              <strong style="font-size:0.78rem; font-weight:700; color:#0f172a; line-height:1.2;">${p.name}</strong>
               ${p.isDefault ? '<div style="margin-top:2px;"><span class="badge-default">★ Default</span></div>' : ''}
             </div>
-            ${renderProviderActionControls(p)}
+            ${renderProviderActionControls(p, idx, waterItems.length)}
           </div>
           <div style="background:#f8fafc; padding:8px 10px; border-radius:10px; font-size:0.76rem;">
-            ${p.type==='REFUSE' ? `<div class="card-row-item"><span>Usage Fee</span><strong>S$${(p.fee||0).toFixed(4)} / month</strong></div>` :
-              p.type==='ELECTRICITY' ? `<div class="card-row-item"><span>Usage Fee</span><strong>S$${(p.tariff||0).toFixed(4)} / kWh</strong></div>` :
-              `<div class="card-row-item"><span>Rate Model</span><strong>${p.model==='FLAT'?'Flat':'Standard Tiered'}</strong></div>`}
-            <div class="card-row-item"><span>GST</span><strong>${(p.gst||0).toFixed(1)}%</strong></div>
+            <div class="card-row-item"><span>Rate Model</span><strong>Flat Rate</strong></div>
+            <div class="card-row-item"><span>Usage Fee</span><strong>S$${(p.flatRate || 0).toFixed(4)} / m³</strong></div>
+            <div class="card-row-item"><span>GST</span><strong>${(p.gst || 0).toFixed(1)}%</strong></div>
           </div>
-        </div>`).join('');
-  });
+        </div>
+      `;
+    }
+    const t1Total = (p.t1Tariff || 0) + (p.t1Wct || 0) + (p.t1Wbf || 0);
+    const t2Total = (p.t2Tariff || 0) + (p.t2Wct || 0) + (p.t2Wbf || 0);
+    return `
+      <div class="provider-card-ui">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            <strong style="font-size:0.78rem; font-weight:700; color:#0f172a; line-height:1.2;">${p.name}</strong>
+            ${p.isDefault ? '<div style="margin-top:2px;"><span class="badge-default">★ Default</span></div>' : ''}
+          </div>
+          ${renderProviderActionControls(p, idx, waterItems.length)}
+        </div>
+        <div style="background:#f8fafc; padding:8px 10px; border-radius:10px; font-size:0.76rem;">
+          <div class="card-row-item"><span>Rate Model</span><strong>Standard Tiered</strong></div>
+          <div style="margin-top:4px;">
+            <div class="card-row-item">
+              <span>• Tier 1 (Up to 40 m³)</span>
+              <strong>S$${t1Total.toFixed(4)} / m³</strong>
+            </div>
+            <div class="card-row-item" style="padding-left:12px; color:#64748b;">
+              <span>└ Waterborne Tax (WBF)</span><span>S$${(p.t1Wbf || 0).toFixed(4)} / m³</span>
+            </div>
+            <div class="card-row-item" style="padding-left:12px; color:#64748b;">
+              <span>└ Water Conservation Tax (WCT)</span><span>S$${(p.t1Wct || 0).toFixed(4)} / m³</span>
+            </div>
+          </div>
+          <div style="margin-top:4px;">
+            <div class="card-row-item">
+              <span>• Tier 2 (Above 40 m³)</span>
+              <strong>S$${t2Total.toFixed(4)} / m³</strong>
+            </div>
+            <div class="card-row-item" style="padding-left:12px; color:#64748b;">
+              <span>└ Waterborne Tax (WBF)</span><span>S$${(p.t2Wbf || 0).toFixed(4)} / m³</span>
+            </div>
+            <div class="card-row-item" style="padding-left:12px; color:#64748b;">
+              <span>└ Water Conservation Tax (WCT)</span><span>S$${(p.t2Wct || 0).toFixed(4)} / m³</span>
+            </div>
+          </div>
+          <div class="card-row-item" style="margin-top:4px;"><span>GST</span><strong>${(p.gst || 0).toFixed(1)}%</strong></div>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
-// Modal State & Controls
-let editingProviderId = null, selectedModalType = 'ELECTRICITY', selectedModalWaterModel = 'FLAT';
+// Modal state
+let editingProviderId = null;
+let selectedModalType = 'ELECTRICITY';
+let selectedModalWaterModel = 'FLAT';
 
-function updateModalUI() {
-  ['Elec', 'Water', 'Refuse'].forEach(t => {
-    const chip = $(`chip${t}`), group = $(`form${t}Group`);
-    if (chip) chip.className = `type-chip${selectedModalType === t.toUpperCase() ? ` active-${t.toLowerCase()}` : ''}`;
-    if (group) group.classList.toggle('hidden', selectedModalType !== t.toUpperCase());
-  });
+function updateModalTypeUI() {
+  const chipElec = document.getElementById('chipElec');
+  const chipWater = document.getElementById('chipWater');
+  const chipRefuse = document.getElementById('chipRefuse');
 
-  if ($('btnWaterModelFlat')) $('btnWaterModelFlat').className = `model-btn${selectedModalWaterModel==='FLAT'?' active':''}`;
-  if ($('btnWaterModelTiered')) $('btnWaterModelTiered').className = `model-btn${selectedModalWaterModel==='TIERED'?' active':''}`;
-  if ($('modalWaterFlatFields')) $('modalWaterFlatFields').classList.toggle('hidden', selectedModalWaterModel !== 'FLAT');
-  if ($('modalWaterTieredFields')) $('modalWaterTieredFields').classList.toggle('hidden', selectedModalWaterModel !== 'TIERED');
+  if (chipElec) chipElec.className = 'type-chip' + (selectedModalType === 'ELECTRICITY' ? ' active-elec' : '');
+  if (chipWater) chipWater.className = 'type-chip' + (selectedModalType === 'WATER' ? ' active-water' : '');
+  if (chipRefuse) chipRefuse.className = 'type-chip' + (selectedModalType === 'REFUSE' ? ' active-refuse' : '');
+
+  const fElec = document.getElementById('formElecGroup');
+  const fWater = document.getElementById('formWaterGroup');
+  const fRefuse = document.getElementById('formRefuseGroup');
+  if (fElec) fElec.classList.toggle('hidden', selectedModalType !== 'ELECTRICITY');
+  if (fWater) fWater.classList.toggle('hidden', selectedModalType !== 'WATER');
+  if (fRefuse) fRefuse.classList.toggle('hidden', selectedModalType !== 'REFUSE');
+}
+
+function updateModalWaterModelUI() {
+  const btnFlat = document.getElementById('btnWaterModelFlat');
+  const btnTiered = document.getElementById('btnWaterModelTiered');
+  if (btnFlat) btnFlat.className = 'model-btn' + (selectedModalWaterModel === 'FLAT' ? ' active' : '');
+  if (btnTiered) btnTiered.className = 'model-btn' + (selectedModalWaterModel === 'TIERED' ? ' active' : '');
+
+  const mWaterFlat = document.getElementById('modalWaterFlatFields');
+  const mWaterTiered = document.getElementById('modalWaterTieredFields');
+  if (mWaterFlat) mWaterFlat.classList.toggle('hidden', selectedModalWaterModel !== 'FLAT');
+  if (mWaterTiered) mWaterTiered.classList.toggle('hidden', selectedModalWaterModel !== 'TIERED');
+}
+
+function updateTierCalculatedTotals() {
+  const t1T = parseFloat(document.getElementById('modalWaterT1Tariff').value) || 0;
+  const t1Wct = parseFloat(document.getElementById('modalWaterT1Wct').value) || 0;
+  const t1Wbf = parseFloat(document.getElementById('modalWaterT1Wbf').value) || 0;
+  const t1Total = t1T + t1Wct + t1Wbf;
+
+  const t2T = parseFloat(document.getElementById('modalWaterT2Tariff').value) || 0;
+  const t2Wct = parseFloat(document.getElementById('modalWaterT2Wct').value) || 0;
+  const t2Wbf = parseFloat(document.getElementById('modalWaterT2Wbf').value) || 0;
+  const t2Total = t2T + t2Wct + t2Wbf;
+
+  const t1Lbl = document.getElementById('modalT1CalculatedLabel');
+  const t2Lbl = document.getElementById('modalT2CalculatedLabel');
+  if (t1Lbl) t1Lbl.innerText = `S$${t1Total.toFixed(4)} / m³`;
+  if (t2Lbl) t2Lbl.innerText = `S$${t2Total.toFixed(4)} / m³`;
 }
 
 function openModalForProvider(p = null) {
-  editingProviderId = p?.id || null;
-  if ($('modalTitle')) $('modalTitle').innerText = p ? 'Edit Provider' : 'Configure New Provider';
-  if ($('modalProviderName')) $('modalProviderName').value = p?.name || '';
-  if ($('modalIsDefault')) $('modalIsDefault').checked = p ? !!p.isDefault : true;
+  editingProviderId = p ? p.id : null;
+  const modalTitle = document.getElementById('modalTitle');
+  if (modalTitle) modalTitle.innerText = p ? 'Edit Provider' : 'Configure New Provider';
+  const modalName = document.getElementById('modalProviderName');
+  if (modalName) modalName.value = p ? p.name : '';
+  const modalDefault = document.getElementById('modalIsDefault');
+  if (modalDefault) modalDefault.checked = p ? !!p.isDefault : true;
 
-  selectedModalType = p?.type || 'ELECTRICITY';
-  if (selectedModalType === 'WATER') selectedModalWaterModel = (p?.model === 'SG_TIERED' || p?.model === 'TIERED') ? 'TIERED' : 'FLAT';
-  
-  updateModalUI();
-  if ($('providerModal')) $('providerModal').classList.remove('hidden');
-}
-
-$('btnOpenAddProvider')?.addEventListener('click', () => openModalForProvider(null));
-$('modalBtnCancel')?.addEventListener('click', () => $('providerModal')?.classList.add('hidden'));
-
-['chipElec', 'chipWater', 'chipRefuse'].forEach((id, i) => {
-  $(id)?.addEventListener('click', () => { selectedModalType = ['ELECTRICITY', 'WATER', 'REFUSE'][i]; updateModalUI(); });
-});
-
-$('btnWaterModelFlat')?.addEventListener('click', () => { selectedModalWaterModel = 'FLAT'; updateModalUI(); });
-$('btnWaterModelTiered')?.addEventListener('click', () => { selectedModalWaterModel = 'TIERED'; updateModalUI(); });
-
-$('modalBtnSave')?.addEventListener('click', () => {
-  const name = $('modalProviderName')?.value.trim() || 'Provider Name';
-  const isDefault = $('modalIsDefault')?.checked ?? true;
-
-  let pObj = { id: editingProviderId || 'p_' + Date.now(), type: selectedModalType, name, isDefault };
+  selectedModalType = p ? p.type : 'ELECTRICITY';
+  updateModalTypeUI();
 
   if (selectedModalType === 'ELECTRICITY') {
-    pObj.tariff = getNum('modalElecRate') || 0.2324;
-    pObj.gst = getNum('modalElecGst') || 9.0;
+    const eRate = document.getElementById('modalElecRate');
+    const eGst = document.getElementById('modalElecGst');
+    if (eRate) eRate.value = p ? p.tariff : 0.2324;
+    if (eGst) eGst.value = p ? p.gst : 9.0;
   } else if (selectedModalType === 'WATER') {
-    pObj.model = selectedModalWaterModel;
+    selectedModalWaterModel = (p && (p.model === 'SG_TIERED' || p.model === 'TIERED')) ? 'TIERED' : 'FLAT';
+    updateModalWaterModelUI();
     if (selectedModalWaterModel === 'FLAT') {
-      pObj.flatRate = getNum('modalWaterFlatRate') || 1.20;
-      pObj.gst = getNum('modalWaterFlatGst') || 9.0;
+      const wRate = document.getElementById('modalWaterFlatRate');
+      const wGst = document.getElementById('modalWaterFlatGst');
+      if (wRate) wRate.value = p ? (p.flatRate || 1.20) : 1.20;
+      if (wGst) wGst.value = p ? (p.gst || 9.0) : 9.0;
     } else {
-      pObj.t1Tariff = getNum('modalWaterT1Tariff') || 1.210;
-      pObj.t1Wct = getNum('modalWaterT1Wct') || 0.720;
-      pObj.t1Wbf = getNum('modalWaterT1Wbf') || 1.090;
-      pObj.t2Tariff = getNum('modalWaterT2Tariff') || 1.810;
-      pObj.t2Wct = getNum('modalWaterT2Wct') || 1.180;
-      pObj.t2Wbf = getNum('modalWaterT2Wbf') || 1.400;
-      pObj.gst = getNum('modalWaterTieredGst') || 9.0;
+      const t1T = document.getElementById('modalWaterT1Tariff');
+      const t1Wct = document.getElementById('modalWaterT1Wct');
+      const t1Wbf = document.getElementById('modalWaterT1Wbf');
+      const t2T = document.getElementById('modalWaterT2Tariff');
+      const t2Wct = document.getElementById('modalWaterT2Wct');
+      const t2Wbf = document.getElementById('modalWaterT2Wbf');
+      const wTierGst = document.getElementById('modalWaterTieredGst');
+
+      if (t1T) t1T.value = p ? (p.t1Tariff || 1.210) : 1.210;
+      if (t1Wct) t1Wct.value = p ? (p.t1Wct || 0.720) : 0.720;
+      if (t1Wbf) t1Wbf.value = p ? (p.t1Wbf || 1.090) : 1.090;
+      if (t2T) t2T.value = p ? (p.t2Tariff || 1.810) : 1.810;
+      if (t2Wct) t2Wct.value = p ? (p.t2Wct || 1.180) : 1.180;
+      if (t2Wbf) t2Wbf.value = p ? (p.t2Wbf || 1.400) : 1.400;
+      if (wTierGst) wTierGst.value = p ? (p.gst || 9.0) : 9.0;
+      updateTierCalculatedTotals();
     }
   } else if (selectedModalType === 'REFUSE') {
-    pObj.fee = getNum('modalRefuseFee') || 9.76;
-    pObj.gst = getNum('modalRefuseGst') || 9.0;
+    const rFee = document.getElementById('modalRefuseFee');
+    const rGst = document.getElementById('modalRefuseGst');
+    if (rFee) rFee.value = p ? p.fee : 9.76;
+    if (rGst) rGst.value = p ? p.gst : 9.0;
   }
 
-  if (isDefault) providersList.forEach(p => { if (p.type === selectedModalType) p.isDefault = false; });
+  const pModal = document.getElementById('providerModal');
+  if (pModal) pModal.classList.remove('hidden');
+}
+
+// Modal Listeners
+const btnOpenAdd = document.getElementById('btnOpenAddProvider');
+if (btnOpenAdd) btnOpenAdd.addEventListener('click', () => openModalForProvider(null));
+
+const modalCancel = document.getElementById('modalBtnCancel');
+if (modalCancel) modalCancel.addEventListener('click', () => {
+  const pModal = document.getElementById('providerModal');
+  if (pModal) pModal.classList.add('hidden');
+});
+
+const chipE = document.getElementById('chipElec');
+if (chipE) chipE.addEventListener('click', () => { selectedModalType = 'ELECTRICITY'; updateModalTypeUI(); });
+const chipW = document.getElementById('chipWater');
+if (chipW) chipW.addEventListener('click', () => { selectedModalType = 'WATER'; updateModalTypeUI(); });
+const chipR = document.getElementById('chipRefuse');
+if (chipR) chipR.addEventListener('click', () => { selectedModalType = 'REFUSE'; updateModalTypeUI(); });
+
+const btnWFlat = document.getElementById('btnWaterModelFlat');
+if (btnWFlat) btnWFlat.addEventListener('click', () => { selectedModalWaterModel = 'FLAT'; updateModalWaterModelUI(); });
+const btnWTiered = document.getElementById('btnWaterModelTiered');
+if (btnWTiered) btnWTiered.addEventListener('click', () => {
+  selectedModalWaterModel = 'TIERED';
+  updateModalWaterModelUI();
+  updateTierCalculatedTotals();
+});
+
+['modalWaterT1Tariff', 'modalWaterT1Wct', 'modalWaterT1Wbf', 'modalWaterT2Tariff', 'modalWaterT2Wct', 'modalWaterT2Wbf'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', updateTierCalculatedTotals);
+});
+
+const modalSave = document.getElementById('modalBtnSave');
+if (modalSave) modalSave.addEventListener('click', () => {
+  const nameEl = document.getElementById('modalProviderName');
+  const name = (nameEl ? nameEl.value.trim() : '') || 'Provider Name';
+  const defEl = document.getElementById('modalIsDefault');
+  const isDefault = defEl ? defEl.checked : true;
+
+  let providerObj = {
+    id: editingProviderId || 'p_' + Date.now(),
+    type: selectedModalType,
+    name: name,
+    isDefault: isDefault
+  };
+
+  if (selectedModalType === 'ELECTRICITY') {
+    const eRate = document.getElementById('modalElecRate');
+    const eGst = document.getElementById('modalElecGst');
+    providerObj.tariff = parseFloat(eRate ? eRate.value : 0.2324) || 0.2324;
+    providerObj.gst = parseFloat(eGst ? eGst.value : 9.0) || 9.0;
+  } else if (selectedModalType === 'WATER') {
+    providerObj.model = selectedModalWaterModel;
+    if (selectedModalWaterModel === 'FLAT') {
+      const wRate = document.getElementById('modalWaterFlatRate');
+      const wGst = document.getElementById('modalWaterFlatGst');
+      providerObj.flatRate = parseFloat(wRate ? wRate.value : 1.20) || 1.20;
+      providerObj.gst = parseFloat(wGst ? wGst.value : 9.0) || 9.0;
+    } else {
+      const t1T = document.getElementById('modalWaterT1Tariff');
+      const t1Wct = document.getElementById('modalWaterT1Wct');
+      const t1Wbf = document.getElementById('modalWaterT1Wbf');
+      const t2T = document.getElementById('modalWaterT2Tariff');
+      const t2Wct = document.getElementById('modalWaterT2Wct');
+      const t2Wbf = document.getElementById('modalWaterT2Wbf');
+      const wTierGst = document.getElementById('modalWaterTieredGst');
+
+      providerObj.t1Tariff = parseFloat(t1T ? t1T.value : 1.210) || 1.210;
+      providerObj.t1Wct = parseFloat(t1Wct ? t1Wct.value : 0.720) || 0.720;
+      providerObj.t1Wbf = parseFloat(t1Wbf ? t1Wbf.value : 1.090) || 1.090;
+      providerObj.t2Tariff = parseFloat(t2T ? t2T.value : 1.810) || 1.810;
+      providerObj.t2Wct = parseFloat(t2Wct ? t2Wct.value : 1.180) || 1.180;
+      providerObj.t2Wbf = parseFloat(t2Wbf ? t2Wbf.value : 1.400) || 1.400;
+      providerObj.gst = parseFloat(wTierGst ? wTierGst.value : 9.0) || 9.0;
+    }
+  } else if (selectedModalType === 'REFUSE') {
+    const rFee = document.getElementById('modalRefuseFee');
+    const rGst = document.getElementById('modalRefuseGst');
+    providerObj.fee = parseFloat(rFee ? rFee.value : 9.76) || 9.76;
+    providerObj.gst = parseFloat(rGst ? rGst.value : 9.0) || 9.0;
+  }
+
+  if (isDefault) {
+    providersList.forEach(p => {
+      if (p.type === selectedModalType) p.isDefault = false;
+    });
+  }
 
   if (editingProviderId) {
     const idx = providersList.findIndex(p => p.id === editingProviderId);
-    if (idx !== -1) providersList[idx] = pObj;
-  } else { providersList.push(pObj); }
+    if (idx !== -1) providersList[idx] = providerObj;
+  } else {
+    providersList.push(providerObj);
+  }
 
-  $('providerModal')?.classList.add('hidden');
+  const pModal = document.getElementById('providerModal');
+  if (pModal) pModal.classList.add('hidden');
   saveProvidersState();
 });
 
-// Steppers
-const bindStepper = (id, key, delta) => $(id)?.addEventListener('click', () => {
-  let v = (key==='E'?elecCycleStartDay:waterCycleStartDay) + delta;
-  if (v < 1) v = 31; else if (v > 31) v = 1;
-  if (key==='E') elecCycleStartDay = v; else waterCycleStartDay = v;
-  setStorage(`utility_${key==='E'?'elec':'water'}_cycle_start_day`, v);
+// Cycle Day Steppers
+const btnElecMinus = document.getElementById('btnElecCycleMinus');
+if (btnElecMinus) btnElecMinus.addEventListener('click', () => {
+  elecCycleStartDay = elecCycleStartDay <= 1 ? 31 : elecCycleStartDay - 1;
+  localStorage.setItem('utility_elec_cycle_start_day', elecCycleStartDay.toString());
   updateCycleLabels();
-  syncFirebase('cycles', { elecCycleStartDay, waterCycleStartDay });
+  syncCycleToFirebase();
   renderHistory();
 });
 
-bindStepper('btnElecCycleMinus', 'E', -1);
-bindStepper('btnElecCyclePlus', 'E', 1);
-bindStepper('btnWaterCycleMinus', 'W', -1);
-bindStepper('btnWaterCyclePlus', 'W', 1);
+const btnElecPlus = document.getElementById('btnElecCyclePlus');
+if (btnElecPlus) btnElecPlus.addEventListener('click', () => {
+  elecCycleStartDay = elecCycleStartDay >= 31 ? 1 : elecCycleStartDay + 1;
+  localStorage.setItem('utility_elec_cycle_start_day', elecCycleStartDay.toString());
+  updateCycleLabels();
+  syncCycleToFirebase();
+  renderHistory();
+});
 
-// Tab Navigation
+const btnWaterMinus = document.getElementById('btnWaterCycleMinus');
+if (btnWaterMinus) btnWaterMinus.addEventListener('click', () => {
+  waterCycleStartDay = waterCycleStartDay <= 1 ? 31 : waterCycleStartDay - 1;
+  localStorage.setItem('utility_water_cycle_start_day', waterCycleStartDay.toString());
+  updateCycleLabels();
+  syncCycleToFirebase();
+  renderHistory();
+});
+
+const btnWaterPlus = document.getElementById('btnWaterCyclePlus');
+if (btnWaterPlus) btnWaterPlus.addEventListener('click', () => {
+  waterCycleStartDay = waterCycleStartDay >= 31 ? 1 : waterCycleStartDay + 1;
+  localStorage.setItem('utility_water_cycle_start_day', waterCycleStartDay.toString());
+  updateCycleLabels();
+  syncCycleToFirebase();
+  renderHistory();
+});
+
+// Tab Navigation (Electricity, Water, Rates, History)
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     const type = btn.getAttribute('data-type');
     document.querySelectorAll('.tab-section').forEach(sec => sec.classList.add('hidden'));
-    $(`section${type.charAt(0) + type.slice(1).toLowerCase()}`)?.classList.remove('hidden');
-    if (type === 'HISTORY') renderHistory();
+    if (type === 'ELECTRICITY') document.getElementById('sectionElectricity').classList.remove('hidden');
+    if (type === 'WATER') document.getElementById('sectionWater').classList.remove('hidden');
+    if (type === 'RATES') document.getElementById('sectionRates').classList.remove('hidden');
+    if (type === 'HISTORY') {
+      document.getElementById('sectionHistory').classList.remove('hidden');
+      renderHistory();
+    }
   });
 });
 
-// Firebase Unified Sync Helper
-async function syncFirebase(path, val) {
-  if (db && currentUser && window.FirebaseSDK) {
+// Sync helpers
+async function syncReadingsToFirebase() {
+  if (db && currentUser) {
     try {
       const { ref, set } = window.FirebaseSDK;
-      await set(ref(db, `users/${currentUser.uid}/${path}`), val);
-    } catch(e) { console.error(`Sync error (${path}):`, e); }
+      await set(ref(db, `users/${currentUser.uid}/readings`), userReadings);
+    } catch(e) { console.error('Failed auto-syncing readings:', e); }
   }
 }
 
-// Reading Save Logic
-async function saveReading(type) {
-  const isWater = type === 'WATER';
-  const est = isWater ? calculateWaterEst() : calculateElecEst();
-  const prev = isWater ? getNum('waterPrevInput') : Math.round(getNum('elecPrevInput'));
-  const curr = isWater ? getNum('waterCurrInput') : Math.round(getNum('elecCurrInput'));
+async function syncProvidersToFirebase() {
+  if (db && currentUser) {
+    try {
+      const { ref, set } = window.FirebaseSDK;
+      await set(ref(db, `users/${currentUser.uid}/providers`), providersList);
+    } catch(e) { console.error('Failed auto-syncing providers:', e); }
+  }
+}
 
-  if (curr <= 0) return alert('Please enter a valid current reading.');
+async function syncCycleToFirebase() {
+  if (db && currentUser) {
+    try {
+      const { ref, set } = window.FirebaseSDK;
+      await set(ref(db, `users/${currentUser.uid}/cycles`), {
+        elecCycleStartDay,
+        waterCycleStartDay
+      });
+    } catch(e) { console.error('Failed auto-syncing cycle:', e); }
+  }
+}
 
-  const cycleDate = ($(isWater ? 'waterCycleStartInput' : 'elecCycleStartInput')?.value) || getDefaultCycleStartDate(type);
-  const activeP = getActiveProvider(type);
+// Save Reading & Sync
+const btnSaveW = document.getElementById('btnSaveWater');
+if (btnSaveW) btnSaveW.addEventListener('click', async () => {
+  const waterPrevEl = document.getElementById('waterPrevInput');
+  const waterCurrEl = document.getElementById('waterCurrInput');
+
+  const est = calculateWaterEst();
+  const prev = parseFloat(waterPrevEl ? waterPrevEl.value : 0) || 0;
+  const curr = parseFloat(waterCurrEl ? waterCurrEl.value : 0) || 0;
+  if (curr <= 0) { alert('Please enter a valid current reading.'); return; }
+
+  const waterCycleInp = document.getElementById('waterCycleStartInput');
+  const cycleDate = (waterCycleInp ? waterCycleInp.value : '') || getDefaultCycleStartDate('WATER');
+  const activeWaterP = getActiveProvider('WATER');
 
   const item = {
     id: 'rd_' + Date.now(),
-    type,
-    providerName: activeP.name,
-    previousReading: isWater ? parseFloat(prev.toFixed(3)) : prev,
-    currentReading: isWater ? parseFloat(curr.toFixed(3)) : curr,
-    reading: isWater ? parseFloat(curr.toFixed(3)) : curr,
-    usage: isWater ? parseFloat(est.usage.toFixed(3)) : Math.round(est.usage),
+    type: 'WATER',
+    providerName: activeWaterP.name,
+    previousReading: parseFloat(prev.toFixed(3)),
+    currentReading: parseFloat(curr.toFixed(3)),
+    reading: parseFloat(curr.toFixed(3)),
+    usage: parseFloat(est.usage.toFixed(3)),
     totalAmount: est.total,
     readingDate: Date.now(),
     timestamp: Date.now(),
@@ -369,179 +769,423 @@ async function saveReading(type) {
     cycleStartDate: cycleDate
   };
 
-  userReadings.push(item);
-  setStorage('utility_readings_local', userReadings);
-  if (currentUser) setStorage(`utility_readings_${currentUser.uid}`, userReadings);
+  await saveAndSyncReading(item);
+  if (waterPrevEl) waterPrevEl.value = curr.toFixed(3);
+  localStorage.setItem('utility_last_water_reading', curr.toFixed(3));
+  if (currentUser) localStorage.setItem(`utility_last_water_reading_${currentUser.uid}`, curr.toFixed(3));
+  if (waterCurrEl) waterCurrEl.value = '';
+  alert('Water reading saved and synced!');
+});
 
-  await syncFirebase('readings', userReadings);
-  
-  if (isWater) {
-    if ($('waterPrevInput')) $('waterPrevInput').value = curr.toFixed(3);
-    setStorage('utility_last_water_reading', curr.toFixed(3));
-    if ($('waterCurrInput')) $('waterCurrInput').value = '';
-  } else {
-    if ($('elecPrevInput')) $('elecPrevInput').value = curr.toString();
-    setStorage('utility_last_elec_reading', curr.toString());
-    if ($('elecCurrInput')) $('elecCurrInput').value = '';
+const btnSaveE = document.getElementById('btnSaveElectricity');
+if (btnSaveE) btnSaveE.addEventListener('click', async () => {
+  const elecPrevEl = document.getElementById('elecPrevInput');
+  const elecCurrEl = document.getElementById('elecCurrInput');
+
+  const est = calculateElecEst();
+  const prev = Math.round(parseFloat(elecPrevEl ? elecPrevEl.value : 0) || 0);
+  const curr = Math.round(parseFloat(elecCurrEl ? elecCurrEl.value : 0) || 0);
+  if (curr <= 0) { alert('Please enter a valid current reading.'); return; }
+
+  const elecCycleInp = document.getElementById('elecCycleStartInput');
+  const cycleDate = (elecCycleInp ? elecCycleInp.value : '') || getDefaultCycleStartDate('ELECTRICITY');
+  const activeElecP = getActiveProvider('ELECTRICITY');
+
+  const item = {
+    id: 'rd_' + Date.now(),
+    type: 'ELECTRICITY',
+    providerName: activeElecP.name,
+    previousReading: prev,
+    currentReading: curr,
+    reading: curr,
+    usage: Math.round(est.usage),
+    totalAmount: est.total,
+    readingDate: Date.now(),
+    timestamp: Date.now(),
+    date: new Date().toISOString(),
+    cycleStartDate: cycleDate
+  };
+
+  await saveAndSyncReading(item);
+  if (elecPrevEl) elecPrevEl.value = curr.toString();
+  localStorage.setItem('utility_last_elec_reading', curr.toString());
+  if (currentUser) localStorage.setItem(`utility_last_elec_reading_${currentUser.uid}`, curr.toString());
+  if (elecCurrEl) elecCurrEl.value = '';
+  alert('Electricity reading saved and synced!');
+});
+
+async function saveAndSyncReading(item) {
+  userReadings.push(item);
+  localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
+  if (currentUser) {
+    localStorage.setItem(`utility_readings_${currentUser.uid}`, JSON.stringify(userReadings));
   }
 
+  await syncReadingsToFirebase();
   autofillLatestReadings();
   renderHistory();
-  alert(`${isWater ? 'Water' : 'Electricity'} reading saved and synced!`);
 }
 
-$('btnSaveWater')?.addEventListener('click', () => saveReading('WATER'));
-$('btnSaveElectricity')?.addEventListener('click', () => saveReading('ELECTRICITY'));
+// Modal state for Detailed Breakdown
+let activeBreakdownGroupKey = null;
 
-// History & Breakdown Renderers
+// RENDER HISTORY SCREEN
 function renderHistory() {
-  if (!$('historyList')) return;
+  const historyList = document.getElementById('historyList');
+  if (!historyList) return;
+
   const refuseP = getActiveProvider('REFUSE');
   const refuseFee = (refuseP.fee || 9.76) * (1 + ((refuseP.gst || 9.0) / 100));
+
   const currentCycleInfo = getReadingCycleInfo(Date.now(), waterCycleStartDay);
   
   const cycleGroups = {};
+  
   userReadings.forEach(item => {
-    const cycleInfo = getReadingCycleInfo(item.readingDate || item.timestamp, item.type === 'ELECTRICITY' ? elecCycleStartDay : waterCycleStartDay);
-    if (!cycleGroups[cycleInfo.monthName]) {
-      cycleGroups[cycleInfo.monthName] = { key: cycleInfo.monthName, rangeStr: cycleInfo.rangeStr, year: cycleInfo.year, month: cycleInfo.month, elec: [], water: [] };
+    const itemDate = item.readingDate || item.timestamp || Date.now();
+    const cycleInfo = getReadingCycleInfo(itemDate, item.type === 'ELECTRICITY' ? elecCycleStartDay : waterCycleStartDay);
+    const key = cycleInfo.monthName;
+    
+    if (!cycleGroups[key]) {
+      cycleGroups[key] = {
+        key: key,
+        rangeStr: cycleInfo.rangeStr,
+        year: cycleInfo.year,
+        month: cycleInfo.month,
+        elec: [],
+        water: []
+      };
     }
-    cycleGroups[cycleInfo.monthName][item.type === 'ELECTRICITY' ? 'elec' : 'water'].push(item);
+    
+    if (item.type === 'ELECTRICITY') {
+      cycleGroups[key].elec.push(item);
+    } else if (item.type === 'WATER') {
+      cycleGroups[key].water.push(item);
+    }
   });
 
   if (!cycleGroups[currentCycleInfo.monthName]) {
-    cycleGroups[currentCycleInfo.monthName] = { key: currentCycleInfo.monthName, rangeStr: currentCycleInfo.rangeStr, year: currentCycleInfo.year, month: currentCycleInfo.month, elec: [], water: [] };
+    cycleGroups[currentCycleInfo.monthName] = {
+      key: currentCycleInfo.monthName,
+      rangeStr: currentCycleInfo.rangeStr,
+      year: currentCycleInfo.year,
+      month: currentCycleInfo.month,
+      elec: [],
+      water: []
+    };
   }
 
-  const currG = cycleGroups[currentCycleInfo.monthName];
-  const currElecTotal = currG.elec.reduce((s, x) => s + (x.totalAmount || 0), 0);
-  const currWaterTotal = currG.water.reduce((s, x) => s + (x.totalAmount || 0), 0);
+  const currGroup = cycleGroups[currentCycleInfo.monthName];
+  const currElecTotal = currGroup.elec.reduce((s, x) => s + (x.totalAmount || 0), 0);
+  const currWaterTotal = currGroup.water.reduce((s, x) => s + (x.totalAmount || 0), 0);
   const currCycleGrandTotal = currElecTotal + currWaterTotal + refuseFee;
 
   let html = `
+    <!-- Top Current Cycle Monitor Banner -->
     <div class="current-cycle-card">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <span style="font-weight:800; font-size:0.92rem; color:#0f172a;">Current Cycle Monitor</span>
         <span style="font-weight:700; font-size:0.78rem; color:#64748b;">${currentCycleInfo.monthName}</span>
       </div>
+
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px; text-align:center;">
-        <div class="cycle-metric-box"><div style="color:#ef4444; font-size:0.75rem; font-weight:700;">⚡ Electricity</div><div style="font-size:0.95rem; font-weight:800; color:#ef4444;">S$${currElecTotal.toFixed(2)}</div></div>
-        <div class="cycle-metric-box"><div style="color:#0284c7; font-size:0.75rem; font-weight:700;">💧 Water</div><div style="font-size:0.95rem; font-weight:800; color:#0284c7;">S$${currWaterTotal.toFixed(2)}</div></div>
-        <div class="cycle-metric-box"><div style="color:#64748b; font-size:0.75rem; font-weight:700;">🗑️ Refuse</div><div style="font-size:0.95rem; font-weight:800; color:#64748b;">S$${refuseFee.toFixed(2)}</div></div>
+        <div class="cycle-metric-box">
+          <div style="color:#ef4444; font-size:0.75rem; font-weight:700;">⚡ Electricity</div>
+          <div style="font-size:0.95rem; font-weight:800; color:#ef4444; margin-top:2px;">S$${currElecTotal.toFixed(2)}</div>
+        </div>
+        <div class="cycle-metric-box">
+          <div style="color:#0284c7; font-size:0.75rem; font-weight:700;">💧 Water</div>
+          <div style="font-size:0.95rem; font-weight:800; color:#0284c7; margin-top:2px;">S$${currWaterTotal.toFixed(2)}</div>
+        </div>
+        <div class="cycle-metric-box">
+          <div style="color:#64748b; font-size:0.75rem; font-weight:700;">🗑️ Refuse</div>
+          <div style="font-size:0.95rem; font-weight:800; color:#64748b; margin-top:2px;">S$${refuseFee.toFixed(2)}</div>
+        </div>
       </div>
+
       <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #cbd5e1; padding-top:10px;">
         <span style="font-weight:700; font-size:0.85rem; color:#0f172a;">Estimated Cycle Total</span>
         <span style="font-weight:800; font-size:1.18rem; color:#0f172a;">S$${currCycleGrandTotal.toFixed(2)}</span>
       </div>
-    </div>`;
+    </div>
 
-  const sortedKeys = Object.keys(cycleGroups).sort((a, b) => (cycleGroups[b].year * 12 + cycleGroups[b].month) - (cycleGroups[a].year * 12 + cycleGroups[a].month));
-  
-  html += sortedKeys.map(key => {
-    const g = cycleGroups[key];
-    const elecTotal = g.elec.reduce((s, x) => s + (x.totalAmount || 0), 0);
-    const elecUsage = g.elec.reduce((s, x) => s + (x.usage || 0), 0);
-    const waterTotal = g.water.reduce((s, x) => s + (x.totalAmount || 0), 0);
-    const waterUsage = g.water.reduce((s, x) => s + (x.usage || 0), 0);
-    
-    return `
-      <div class="history-period-card">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-          <div><strong style="font-size:0.98rem; font-weight:800; color:#0f172a;">${g.key}</strong></div>
-          <div style="text-align:right;"><span style="font-size:0.68rem; color:#64748b;">Total Bill</span><strong style="font-size:1.05rem; display:block; color:#0f172a;">S$${(elecTotal + waterTotal + refuseFee).toFixed(2)}</strong></div>
-        </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
-          <div class="history-subcard-elec"><div style="font-weight:700; font-size:0.76rem; color:#dc2626;">⚡ Electricity</div><div style="font-weight:800; font-size:0.92rem; color:#dc2626;">S$${elecTotal.toFixed(4)}</div><div style="font-size:0.72rem; font-weight:700;">${Math.round(elecUsage)} kWh</div></div>
-          <div class="history-subcard-water"><div style="font-weight:700; font-size:0.76rem; color:#0284c7;">💧 Water</div><div style="font-weight:800; font-size:0.92rem; color:#0284c7;">S$${waterTotal.toFixed(4)}</div><div style="font-size:0.72rem; font-weight:700;">${waterUsage.toFixed(3)} m³</div></div>
-        </div>
-        <button type="button" class="btn-see-history" onclick="window.openBreakdownModal('${g.key}')">➔ See History</button>
-      </div>`;
-  }).join('');
+    <!-- Past Calculations History Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin:16px 0 10px 0;">
+      <h3 style="font-size:0.92rem; font-weight:800; color:#f8fafc;">Past Calculations History</h3>
+      <span class="badge-cycle-info">Grouped: Cycle (⚡ ${elecCycleStartDay}th | 💧 ${waterCycleStartDay}th)</span>
+    </div>
+  `;
 
-  $('historyList').innerHTML = html;
+  const sortedKeys = Object.keys(cycleGroups).sort((a, b) => {
+    return (cycleGroups[b].year * 12 + cycleGroups[b].month) - (cycleGroups[a].year * 12 + cycleGroups[a].month);
+  });
+
+  if (sortedKeys.length === 0) {
+    html += `<p style="text-align:center; color:var(--text-muted); padding:16px; font-size:0.8rem;">No saved calculation logs found.</p>`;
+  } else {
+    html += sortedKeys.map(key => {
+      const g = cycleGroups[key];
+      const elecTotal = g.elec.reduce((s, x) => s + (x.totalAmount || 0), 0);
+      const elecUsage = g.elec.reduce((s, x) => s + (x.usage || 0), 0);
+      
+      const waterTotal = g.water.reduce((s, x) => s + (x.totalAmount || 0), 0);
+      const waterUsage = g.water.reduce((s, x) => s + (x.usage || 0), 0);
+      
+      const periodGrandTotal = elecTotal + waterTotal + refuseFee;
+
+      return `
+        <div class="history-period-card">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="material-icons-round" style="color:#0f172a; font-size:22px;">format_list_bulleted</span>
+              <div>
+                <strong style="font-size:0.98rem; font-weight:800; color:#0f172a; display:block; line-height:1.2;">${g.key}</strong>
+                <span style="font-size:0.7rem; color:#64748b; font-weight:600;">Billing Cycle Period</span>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <span style="font-size:0.68rem; color:#64748b; font-weight:700; display:block;">Total Period Bill</span>
+              <strong style="font-size:1.05rem; font-weight:800; color:#0f172a;">S$${periodGrandTotal.toFixed(2)}</strong>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+            <!-- Electricity Sub Card -->
+            <div class="history-subcard-elec">
+              <div style="font-weight:700; font-size:0.76rem; color:#dc2626; display:flex; align-items:center; gap:4px;">⚡ Electricity</div>
+              <div style="font-weight:800; font-size:0.92rem; color:#dc2626; margin:4px 0 2px 0;">S$${elecTotal.toFixed(4)}</div>
+              <div style="font-size:0.72rem; color:#0f172a; font-weight:700;">${Math.round(elecUsage)} kWh</div>
+              <div style="font-size:0.68rem; color:#94a3b8; margin-top:2px;">${g.elec.length} entries</div>
+            </div>
+
+            <!-- Water Sub Card -->
+            <div class="history-subcard-water">
+              <div style="font-weight:700; font-size:0.76rem; color:#0284c7; display:flex; align-items:center; gap:4px;">💧 Water</div>
+              <div style="font-weight:800; font-size:0.92rem; color:#0284c7; margin:4px 0 2px 0;">S$${waterTotal.toFixed(4)}</div>
+              <div style="font-size:0.72rem; color:#0f172a; font-weight:700;">${waterUsage.toFixed(3)} m³</div>
+              <div style="font-size:0.68rem; color:#94a3b8; margin-top:2px;">${g.water.length} entries</div>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-top:1px solid #f1f5f9; margin-bottom:8px;">
+            <span style="font-size:0.76rem; font-weight:700; color:#475569; display:flex; align-items:center; gap:6px;">
+              🗑️ Refuse Collection Fee
+            </span>
+            <strong style="font-size:0.82rem; font-weight:800; color:#475569;">S$${refuseFee.toFixed(2)}</strong>
+          </div>
+
+          <button type="button" class="btn-see-history" onclick="window.openBreakdownModal('${g.key}')">
+            ➔ See History
+          </button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  historyList.innerHTML = html;
   autofillLatestReadings();
 }
 
+// Open Detailed Breakdown Modal
 window.openBreakdownModal = function(groupKey) {
-  const items = userReadings.filter(item => getReadingCycleInfo(item.readingDate || item.timestamp, item.type === 'ELECTRICITY' ? elecCycleStartDay : waterCycleStartDay).monthName === groupKey);
+  activeBreakdownGroupKey = groupKey;
+  renderBreakdownModalContent();
+  const modal = document.getElementById('breakdownModal');
+  if (modal) modal.classList.remove('hidden');
+};
+
+function renderBreakdownModalContent() {
+  if (!activeBreakdownGroupKey) return;
+
   const refuseP = getActiveProvider('REFUSE');
   const refuseFee = (refuseP.fee || 9.76) * (1 + ((refuseP.gst || 9.0) / 100));
 
-  const elecItems = items.filter(x => x.type === 'ELECTRICITY').sort((a,b)=>(b.readingDate||0)-(a.readingDate||0));
-  const waterItems = items.filter(x => x.type === 'WATER').sort((a,b)=>(b.readingDate||0)-(a.readingDate||0));
+  const items = userReadings.filter(item => {
+    const itemDate = item.readingDate || item.timestamp || Date.now();
+    const cycleInfo = getReadingCycleInfo(itemDate, item.type === 'ELECTRICITY' ? elecCycleStartDay : waterCycleStartDay);
+    return cycleInfo.monthName === activeBreakdownGroupKey;
+  });
 
-  const grandTotal = items.reduce((s, x) => s + (x.totalAmount || 0), 0) + refuseFee;
-  if ($('breakdownTitle')) $('breakdownTitle').innerText = groupKey.toUpperCase();
+  // Sort logs descending (Latest record first)
+  const elecItems = items
+    .filter(x => x.type === 'ELECTRICITY')
+    .sort((a, b) => (b.readingDate || b.timestamp || 0) - (a.readingDate || a.timestamp || 0));
 
-  const renderLogRows = logItems => logItems.map(item => `
-    <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:0.74rem;">
-      <span>${formatDateDMY(item.readingDate || item.timestamp)} (${item.type==='WATER'?parseFloat(item.previousReading||0).toFixed(3):Math.round(item.previousReading)} ➔ ${item.type==='WATER'?parseFloat(item.currentReading||0).toFixed(3):Math.round(item.currentReading)})</span>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <strong>S$${(item.totalAmount || 0).toFixed(2)}</strong>
-        <button type="button" onclick="window.deleteReadingItem('${item.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer;"><span class="material-icons-round">delete</span></button>
+  const waterItems = items
+    .filter(x => x.type === 'WATER')
+    .sort((a, b) => (b.readingDate || b.timestamp || 0) - (a.readingDate || a.timestamp || 0));
+
+  const elecTotal = elecItems.reduce((s, x) => s + (x.totalAmount || 0), 0);
+  const elecUsage = elecItems.reduce((s, x) => s + (x.usage || 0), 0);
+  const waterTotal = waterItems.reduce((s, x) => s + (x.totalAmount || 0), 0);
+  const waterUsage = waterItems.reduce((s, x) => s + (x.usage || 0), 0);
+
+  const grandTotal = elecTotal + waterTotal + refuseFee;
+
+  const cycleInfo = getReadingCycleInfo(Date.now(), waterCycleStartDay);
+
+  const titleEl = document.getElementById('breakdownTitle');
+  if (titleEl) titleEl.innerText = activeBreakdownGroupKey.toUpperCase();
+
+  const container = document.getElementById('breakdownContent');
+  if (!container) return;
+
+  const activeElecP = getActiveProvider('ELECTRICITY');
+  const activeWaterP = getActiveProvider('WATER');
+
+  container.innerHTML = `
+    <!-- Combined Grand Total Banner -->
+    <div style="background:#ffffff; border-radius:16px; padding:14px 16px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+      <div>
+        <span style="font-size:0.72rem; color:#64748b; font-weight:700; display:block;">Combined Grand Total</span>
+        <strong style="font-size:1.35rem; font-weight:800; color:#0f172a;">S$${grandTotal.toFixed(2)}</strong>
       </div>
-    </div>`).join('');
+      <span class="material-icons-round" style="color:#10b981; font-size:32px;">check_circle</span>
+    </div>
 
-  if ($('breakdownContent')) {
-    $('breakdownContent').innerHTML = `
-      <div style="background:#fff; border-radius:16px; padding:14px 16px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
-        <div><span style="font-size:0.72rem; color:#64748b; font-weight:700;">Combined Grand Total</span><strong style="font-size:1.35rem; display:block;">S$${grandTotal.toFixed(2)}</strong></div>
-        <span class="material-icons-round" style="color:#10b981; font-size:32px;">check_circle</span>
+    <!-- Electricity Details Card -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:0.82rem; font-weight:800; color:#ef4444; margin-bottom:6px; display:flex; align-items:center; gap:4px;">
+        ⚡ Electricity Details
       </div>
-      <div style="margin-bottom:14px;"><strong style="color:#ef4444;">⚡ Electricity Logs</strong><div style="background:#fff; padding:12px; border-radius:16px; margin-top:6px;">${renderLogRows(elecItems)}</div></div>
-      <div style="margin-bottom:14px;"><strong style="color:#0284c7;">💧 Water Logs</strong><div style="background:#fff; padding:12px; border-radius:16px; margin-top:6px;">${renderLogRows(waterItems)}</div></div>`;
-  }
+      <div style="background:#ffffff; border-radius:16px; padding:12px 14px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div style="background:#fef2f2; color:#ef4444; width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:800;">⚡</div>
+            <div>
+              <strong style="font-size:0.82rem; font-weight:800; color:#ef4444; display:block;">Electricity Compiled</strong>
+              <span style="font-size:0.68rem; color:#64748b; font-weight:600;">${cycleInfo.rangeStr}</span>
+            </div>
+          </div>
+          <span style="background:#fef2f2; color:#ef4444; font-size:0.68rem; font-weight:800; padding:3px 8px; border-radius:10px;">${elecItems.length} entries</span>
+        </div>
 
-  $('breakdownModal')?.classList.remove('hidden');
-};
+        <div style="display:flex; justify-content:space-between; font-size:0.74rem; color:#64748b; padding:6px 0; border-top:1px solid #f1f5f9;">
+          <span>Providers: <strong style="color:#0f172a;">${elecItems[0]?.providerName || activeElecP.name}</strong></span>
+          <span>Total Usage: <strong style="color:#0f172a;">${Math.round(elecUsage)} kWh</strong></span>
+          <span>Est. Bill: <strong style="color:#ef4444;">S$${elecTotal.toFixed(4)}</strong></span>
+        </div>
+
+        <!-- Logs Breakdown (Latest record first) -->
+        <div style="margin-top:8px; border-top:1px dashed #e2e8f0; padding-top:6px;">
+          ${elecItems.length === 0 ? '<p style="font-size:0.72rem; color:#94a3b8; font-style:italic;">No electricity entries.</p>' : elecItems.map(item => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:0.74rem;">
+              <div>
+                <span style="color:#0f172a; font-weight:700;">${formatDateDMY(item.readingDate || item.timestamp)}</span>
+                <span style="color:#64748b; margin-left:6px;">(${Math.round(item.previousReading)} ➔ ${Math.round(item.currentReading)})</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <strong style="color:#ef4444;">S$${(item.totalAmount || 0).toFixed(2)}</strong>
+                <button type="button" onclick="window.deleteReadingItem('${item.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:2px;">
+                  <span class="material-icons-round" style="pointer-events:none; font-size:16px;">delete</span>
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- Water Details Card -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:0.82rem; font-weight:800; color:#0284c7; margin-bottom:6px; display:flex; align-items:center; gap:4px;">
+        💧 Water Details
+      </div>
+      <div style="background:#ffffff; border-radius:16px; padding:12px 14px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div style="background:#f0f9ff; color:#0284c7; width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:800;">💧</div>
+            <div>
+              <strong style="font-size:0.82rem; font-weight:800; color:#0284c7; display:block;">Water Compiled</strong>
+              <span style="font-size:0.68rem; color:#64748b; font-weight:600;">${cycleInfo.rangeStr}</span>
+            </div>
+          </div>
+          <span style="background:#f0f9ff; color:#0284c7; font-size:0.68rem; font-weight:800; padding:3px 8px; border-radius:10px;">${waterItems.length} entries</span>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; font-size:0.74rem; color:#64748b; padding:6px 0; border-top:1px solid #f1f5f9;">
+          <span>Providers: <strong style="color:#0f172a;">${waterItems[0]?.providerName || activeWaterP.name}</strong></span>
+          <span>Total Usage: <strong style="color:#0f172a;">${waterUsage.toFixed(3)} m³</strong></span>
+          <span>Est. Bill: <strong style="color:#0284c7;">S$${waterTotal.toFixed(4)}</strong></span>
+        </div>
+
+        <!-- Logs Breakdown (Latest record first) -->
+        <div style="margin-top:8px; border-top:1px dashed #e2e8f0; padding-top:6px;">
+          ${waterItems.length === 0 ? '<p style="font-size:0.72rem; color:#94a3b8; font-style:italic;">No water entries.</p>' : waterItems.map(item => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:0.74rem;">
+              <div>
+                <span style="color:#0f172a; font-weight:700;">${formatDateDMY(item.readingDate || item.timestamp)}</span>
+                <span style="color:#64748b; margin-left:6px;">(${parseFloat(item.previousReading || 0).toFixed(3)} ➔ ${parseFloat(item.currentReading || 0).toFixed(3)})</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <strong style="color:#0284c7;">S$${(item.totalAmount || 0).toFixed(2)}</strong>
+                <button type="button" onclick="window.deleteReadingItem('${item.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:2px;">
+                  <span class="material-icons-round" style="pointer-events:none; font-size:16px;">delete</span>
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- Refuse Details Card -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:0.82rem; font-weight:800; color:#475569; margin-bottom:6px; display:flex; align-items:center; gap:4px;">
+        🗑️ Refuse Collection Details
+      </div>
+      <div style="background:#ffffff; border-radius:16px; padding:12px 14px; box-shadow:0 2px 8px rgba(0,0,0,0.1); display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <strong style="font-size:0.82rem; font-weight:800; color:#0f172a; display:block;">Monthly Flat Charge</strong>
+          <span style="font-size:0.68rem; color:#64748b;">Calculated based on active refuse provider rates</span>
+        </div>
+        <strong style="font-size:0.95rem; font-weight:800; color:#0f172a;">S$${refuseFee.toFixed(2)}</strong>
+      </div>
+    </div>
+  `;
+}
 
 window.deleteReadingItem = async function(id) {
   if (!confirm('Delete this reading entry?')) return;
   userReadings = userReadings.filter(x => x.id !== id);
-  setStorage('utility_readings_local', userReadings);
-  if (currentUser) setStorage(`utility_readings_${currentUser.uid}`, userReadings);
-  await syncFirebase('readings', userReadings);
+  localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
+  if (currentUser) {
+    localStorage.setItem(`utility_readings_${currentUser.uid}`, JSON.stringify(userReadings));
+  }
+  await syncReadingsToFirebase();
   renderHistory();
-  if ($('breakdownModal') && !$('breakdownModal').classList.contains('hidden')) $('breakdownModal').classList.add('hidden');
+  renderBreakdownModalContent();
+  autofillLatestReadings();
 };
 
-window.closeBreakdownModal = () => $('breakdownModal')?.classList.add('hidden');
+window.closeBreakdownModal = function() {
+  const modal = document.getElementById('breakdownModal');
+  if (modal) modal.classList.add('hidden');
+};
 
-// Delegated Click Handlers
-document.addEventListener('click', e => {
+// Central Delegated Event Handler for Provider Actions
+document.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
-  const action = btn.getAttribute('data-action'), id = btn.getAttribute('data-id');
+  
+  const action = btn.getAttribute('data-action');
+  const id = btn.getAttribute('data-id');
 
-  if (action === 'edit-provider') openModalForProvider(providersList.find(x => x.id === id));
-  else if (action === 'delete-provider' && confirm('Delete this provider?')) {
-    providersList = providersList.filter(x => x.id !== id);
-    saveProvidersState();
+  if (action === 'edit-provider') {
+    e.preventDefault();
+    const p = providersList.find(x => x.id === id);
+    if (p) openModalForProvider(p);
+  } else if (action === 'delete-provider') {
+    e.preventDefault();
+    if (confirm('Are you sure you want to delete this provider?')) {
+      providersList = providersList.filter(x => x.id !== id);
+      saveProvidersState();
+    }
   }
 });
 
-// Global Logout Handler
-window.handleLogout = async function() {
-  if (window.FirebaseSDK) {
-    try {
-      if (!auth) auth = window.FirebaseSDK.getAuth();
-      if (auth) await window.FirebaseSDK.signOut(auth);
-    } catch(e) { console.error('Logout error:', e); }
-  }
-  currentUser = null;
-  $('mainHeader')?.classList.add('hidden');
-  $('authLandingScreen')?.classList.remove('hidden');
-  $('mainContainer')?.classList.add('hidden');
-
-  try { userReadings = JSON.parse(getStorage('utility_readings_local') || '[]'); } catch(e) { userReadings = []; }
-  try { providersList = JSON.parse(getStorage('utility_providers') || '[]'); } catch(e) {}
-  
-  renderHistory();
-  renderProviders();
-};
-
-// Firebase Initialization
-const defaultCfg = {
+// Default Firebase Config
+const defaultFirebaseConfig = {
   apiKey: "AIzaSyD7ILTXVKJ2Cd1KYALBHhllipzXNJqmG0c",
   authDomain: "utility-reading.firebaseapp.com",
   databaseURL: "https://utility-reading-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -551,55 +1195,186 @@ const defaultCfg = {
   appId: "1:361617071162:web:9619065ad4e76407efa903"
 };
 
-function initFirebase(cfg) {
-  try {
-    if (!window.FirebaseSDK) return false;
-    const { initializeApp, getAuth, getDatabase, onAuthStateChanged, ref, onValue } = window.FirebaseSDK;
-    const app = initializeApp(cfg);
-    auth = getAuth(app); db = getDatabase(app);
-
-    onAuthStateChanged(auth, user => {
-      currentUser = user;
-      $('mainHeader')?.classList.toggle('hidden', !user);
-      $('authLandingScreen')?.classList.toggle('hidden', !!user);
-      $('mainContainer')?.classList.toggle('hidden', !user);
-
-      if (user) {
-        if ($('userAvatar')) $('userAvatar').src = user.photoURL || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="100" fill="%230f172a"/><path d="M220 120 C220 120 130 240 130 310 A90 90 0 0 0 310 310 C310 240 220 120 220 120 Z" fill="%2338bdf8"/><path d="M310 110 L215 250 L270 250 L190 400 L310 230 L255 230 Z" fill="%23f59e0b"/></svg>';
-        
-        onValue(ref(db, `users/${user.uid}/readings`), snapshot => {
-          if (snapshot.exists()) {
-            const data = snapshot.val();
-            userReadings = Array.isArray(data) ? data : Object.entries(data).map(([id, val]) => ({ id, ...val }));
-            setStorage('utility_readings_local', userReadings);
-            renderHistory();
-          }
-        });
-
-        onValue(ref(db, `users/${user.uid}/providers`), snapshot => {
-          if (snapshot.exists()) {
-            const data = snapshot.val();
-            providersList = Array.isArray(data) ? data : Object.values(data);
-          } else { providersList = []; syncFirebase('providers', providersList); }
-          setStorage('utility_providers', providersList);
-          renderProviders(); updateRateLabels();
-        });
-      }
-    });
-    return true;
-  } catch (err) { console.error('Firebase init:', err); return false; }
+// Firebase Init & Auth
+let activeConfig = defaultFirebaseConfig;
+try {
+  const savedConfig = localStorage.getItem('firebase_web_config');
+  if (savedConfig) {
+    const parsed = JSON.parse(savedConfig);
+    if (parsed && parsed.apiKey) {
+      activeConfig = parsed;
+    }
+  }
+} catch (e) {
+  localStorage.removeItem('firebase_web_config');
 }
 
-initFirebase(defaultCfg);
+const configTextarea = document.getElementById('firebaseConfigText');
+if (configTextarea) {
+  configTextarea.value = JSON.stringify(activeConfig, null, 2);
+}
+
+let readingsUnsub = null;
+let providersUnsub = null;
+let cycleUnsub = null;
+
+ensureDefaultProviders();
+initFirebase(activeConfig);
+
+const localSaved = localStorage.getItem('utility_readings_local');
+if (localSaved) {
+  try { userReadings = JSON.parse(localSaved); } catch(e) {}
+}
+
 renderProviders();
 updateRateLabels();
 updateCycleLabels();
 autofillLatestReadings();
 
-$('btnMainLogin')?.addEventListener('click', async () => {
+function initFirebase(cfg) {
+  try {
+    if (!window.FirebaseSDK) return false;
+    const { initializeApp, getAuth, getDatabase, onAuthStateChanged, getRedirectResult, ref, onValue } = window.FirebaseSDK;
+    const app = initializeApp(cfg);
+    auth = getAuth(app);
+    db = getDatabase(app);
+
+    if (getRedirectResult) {
+      getRedirectResult(auth).catch(err => console.warn('Redirect auth result:', err));
+    }
+
+    onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+      const mainHeader = document.getElementById('mainHeader');
+      const authLanding = document.getElementById('authLandingScreen');
+      const mainContainer = document.getElementById('mainContainer');
+
+      if (user) {
+        if (mainHeader) mainHeader.classList.remove('hidden');
+        if (authLanding) authLanding.classList.add('hidden');
+        if (mainContainer) mainContainer.classList.remove('hidden');
+
+        const userAvatar = document.getElementById('userAvatar');
+        if (userAvatar) userAvatar.src = user.photoURL || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="100" fill="%230f172a"/><path d="M220 120 C220 120 130 240 130 310 A90 90 0 0 0 310 310 C310 240 220 120 220 120 Z" fill="%2338bdf8"/><path d="M310 110 L215 250 L270 250 L190 400 L310 230 L255 230 Z" fill="%23f59e0b"/></svg>';
+        
+        const syncStatusBanner = document.getElementById('syncStatusBanner');
+        if (syncStatusBanner) {
+          syncStatusBanner.innerHTML = `<span style="color:#10b981; font-weight:700; display:flex; align-items:center; gap:6px;"><span class="material-icons-round" style="font-size:16px;">cloud_done</span> Real-Time Auto Sync Active (${user.email || user.displayName || 'Google Account'})</span>`;
+        }
+
+        const userReadingsRef = ref(db, `users/${user.uid}/readings`);
+        if (readingsUnsub) readingsUnsub();
+        readingsUnsub = onValue(userReadingsRef, (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.val();
+            userReadings = Array.isArray(data) ? data : Object.entries(data).map(([id, val]) => ({ id, ...val }));
+            localStorage.setItem(`utility_readings_${user.uid}`, JSON.stringify(userReadings));
+            localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
+            renderHistory();
+            autofillLatestReadings();
+          }
+        });
+
+        const userProvidersRef = ref(db, `users/${user.uid}/providers`);
+        if (providersUnsub) providersUnsub();
+        providersUnsub = onValue(userProvidersRef, (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.val();
+            providersList = Array.isArray(data) ? data : Object.values(data);
+          } else {
+            ensureDefaultProviders();
+            syncProvidersToFirebase();
+          }
+          localStorage.setItem(`utility_providers_${user.uid}`, JSON.stringify(providersList));
+          localStorage.setItem('utility_providers', JSON.stringify(providersList));
+          renderProviders();
+          updateRateLabels();
+          calculateWaterEst();
+          calculateElecEst();
+        });
+
+        const userCycleRef = ref(db, `users/${user.uid}/cycles`);
+        if (cycleUnsub) cycleUnsub();
+        cycleUnsub = onValue(userCycleRef, (snapshot) => {
+          if (snapshot.exists()) {
+            const cyclesData = snapshot.val();
+            if (cyclesData) {
+              if (cyclesData.elecCycleStartDay) elecCycleStartDay = cyclesData.elecCycleStartDay;
+              if (cyclesData.waterCycleStartDay) waterCycleStartDay = cyclesData.waterCycleStartDay;
+              localStorage.setItem('utility_elec_cycle_start_day', elecCycleStartDay.toString());
+              localStorage.setItem('utility_water_cycle_start_day', waterCycleStartDay.toString());
+              updateCycleLabels();
+            }
+          } else {
+            syncCycleToFirebase();
+          }
+        });
+
+      } else {
+        if (mainHeader) mainHeader.classList.add('hidden');
+        if (authLanding) authLanding.classList.remove('hidden');
+        if (mainContainer) mainContainer.classList.add('hidden');
+
+        ensureDefaultProviders();
+        renderHistory();
+        autofillLatestReadings();
+        renderProviders();
+        updateRateLabels();
+      }
+    });
+    return true;
+  } catch (err) {
+    console.error('Firebase init error:', err);
+    return false;
+  }
+}
+
+const performGoogleLogin = async () => {
   if (!window.FirebaseSDK) return alert("Firebase SDK loading...");
   try {
-    const provider = new window.FirebaseSDK.GoogleAuthProvider();
-    await window.FirebaseSDK.signInWithPopup(auth, provider);
-  } catch(e) { alert("Sign in note: " + (e.message || "Auth error")); }
-});
+    const { GoogleAuthProvider, signInWithPopup } = window.FirebaseSDK;
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  } catch (e) {
+    alert('Sign in note: ' + (e.message || 'Authentication error.'));
+  }
+};
+
+const btnMainLogin = document.getElementById('btnMainLogin');
+if (btnMainLogin) btnMainLogin.addEventListener('click', performGoogleLogin);
+
+// Global Logout Handler
+window.handleLogout = async function() {
+  if (readingsUnsub) { try { readingsUnsub(); } catch(e){} readingsUnsub = null; }
+  if (providersUnsub) { try { providersUnsub(); } catch(e){} providersUnsub = null; }
+  if (cycleUnsub) { try { cycleUnsub(); } catch(e){} cycleUnsub = null; }
+
+  if (window.FirebaseSDK) {
+    try {
+      if (!auth) auth = window.FirebaseSDK.getAuth();
+      if (auth) await window.FirebaseSDK.signOut(auth);
+    } catch(e) { console.error('Logout error:', e); }
+  }
+
+  currentUser = null;
+  const mainHeader = document.getElementById('mainHeader');
+  const authLanding = document.getElementById('authLandingScreen');
+  const mainContainer = document.getElementById('mainContainer');
+  if (mainHeader) mainHeader.classList.add('hidden');
+  if (authLanding) authLanding.classList.remove('hidden');
+  if (mainContainer) mainContainer.classList.add('hidden');
+
+  ensureDefaultProviders();
+  renderHistory();
+  autofillLatestReadings();
+  renderProviders();
+  updateRateLabels();
+};
+
+const btnLogout = document.getElementById('btnLogout');
+if (btnLogout) {
+  btnLogout.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.handleLogout();
+  });
+}
