@@ -214,6 +214,34 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   border-radius: 4px;
 }
 
+/* History Tab Fixed Header & Scrollable Body Layout */
+.history-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden !important;
+}
+
+.history-fixed-header {
+  flex-shrink: 0;
+  margin-bottom: 8px;
+}
+
+.history-scrollable-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 24px;
+}
+
+.history-scrollable-body::-webkit-scrollbar {
+  width: 4px;
+}
+.history-scrollable-body::-webkit-scrollbar-thumb {
+  background: var(--card-border);
+  border-radius: 4px;
+}
+
 .card {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
