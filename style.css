@@ -170,7 +170,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
 }
 
-/* Internal Scrollable Content Sections (Rates, History, etc.) */
+/* Internal Scrollable Content Sections */
 .tab-section {
   flex: 1;
   overflow-y: auto !important;
@@ -182,6 +182,34 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   width: 4px;
 }
 .tab-section::-webkit-scrollbar-thumb {
+  background: var(--card-border);
+  border-radius: 4px;
+}
+
+/* Rates Tab Fixed Header & Scrollable Body Layout */
+.rates-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden !important;
+}
+
+.rates-fixed-header {
+  flex-shrink: 0;
+  margin-bottom: 10px;
+}
+
+.rates-scrollable-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 24px;
+}
+
+.rates-scrollable-body::-webkit-scrollbar {
+  width: 4px;
+}
+.rates-scrollable-body::-webkit-scrollbar-thumb {
   background: var(--card-border);
   border-radius: 4px;
 }
