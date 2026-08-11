@@ -4,16 +4,74 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Utility Bill Estimator</title>
+  
+  <!-- Apple iOS & Mobile PWA Meta Tags -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Utility Calc">
   <meta name="theme-color" content="#0f172a">
   
-  <!-- Embedded Data URI Icon (No external image files required) -->
+  <!-- Embedded SVG Icon for Web Browsers -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='110' fill='%230f172a'/><path d='M220 120 C220 120 130 240 130 310 A90 90 0 0 0 310 310 C310 240 220 120 220 120 Z' fill='%2338bdf8'/><path d='M310 110 L215 250 L270 250 L190 400 L310 230 L255 230 Z' fill='%23f59e0b'/></svg>">
-  <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='110' fill='%230f172a'/><path d='M220 120 C220 120 130 240 130 310 A90 90 0 0 0 310 310 C310 240 220 120 220 120 Z' fill='%2338bdf8'/><path d='M310 110 L215 250 L270 250 L190 400 L310 230 L255 230 Z' fill='%23f59e0b'/></svg>">
+  
+  <!-- Apple Touch Icon Links for iPhones & iPads -->
+  <link rel="apple-touch-icon" sizes="180x180" href="">
+  <link rel="apple-touch-icon" href="">
   <link rel="manifest" href="manifest.json">
+
+  <!-- Generator Script: Convert Vector SVG to Native PNG for iOS Safari -->
+  <script>
+    (function() {
+      function setAppleIcons(pngUrl) {
+        document.querySelectorAll('link[rel="apple-touch-icon"]').forEach(function(el) {
+          el.href = pngUrl;
+          el.type = 'image/png';
+        });
+      }
+
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 180;
+        canvas.height = 180;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        // Draw Dark Background with Rounded Corners
+        ctx.fillStyle = '#0f172a';
+        const r = 38;
+        ctx.beginPath();
+        ctx.moveTo(r, 0);
+        ctx.arcTo(180, 0, 180, 180, r);
+        ctx.arcTo(180, 180, 0, 180, r);
+        ctx.arcTo(0, 180, 0, 0, r);
+        ctx.arcTo(0, 0, 180, 0, r);
+        ctx.closePath();
+        ctx.fill();
+
+        if (window.Path2D) {
+          ctx.save();
+          ctx.scale(180 / 512, 180 / 512);
+          ctx.fillStyle = '#38bdf8';
+          ctx.fill(new Path2D('M220 120 C220 120 130 240 130 310 A90 90 0 0 0 310 310 C310 240 220 120 220 120 Z'));
+          ctx.fillStyle = '#f59e0b';
+          ctx.fill(new Path2D('M310 110 L215 250 L270 250 L190 400 L310 230 L255 230 Z'));
+          ctx.restore();
+          setAppleIcons(canvas.toDataURL('image/png'));
+        } else {
+          const img = new Image();
+          const svgData = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='110' fill='%230f172a'/><path d='M220 120 C220 120 130 240 130 310 A90 90 0 0 0 310 310 C310 240 220 120 220 120 Z' fill='%2338bdf8'/><path d='M310 110 L215 250 L270 250 L190 400 L310 230 L255 230 Z' fill='%23f59e0b'/></svg>";
+          img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgData);
+          img.onload = function() {
+            ctx.drawImage(img, 0, 0, 180, 180);
+            setAppleIcons(canvas.toDataURL('image/png'));
+          };
+        }
+      } catch (e) {
+        console.warn('Apple PWA Icon generation fallback:', e);
+      }
+    })();
+  </script>
   
   <!-- Google Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -74,12 +132,12 @@
       
       <div class="auth-features">
         <div class="auth-feature-item">
-          <span class="material-icons-round" style="color: #38bdf8;">water_drop</span>
-          <span>PUB Tiered & Flat Water Rates</span>
-        </div>
-        <div class="auth-feature-item">
           <span class="material-icons-round" style="color: #f59e0b;">bolt</span>
           <span>Electricity & Refuse Charges</span>
+        </div>
+        <div class="auth-feature-item">
+          <span class="material-icons-round" style="color: #38bdf8;">water_drop</span>
+          <span>PUB Tiered & Flat Water Rates</span>
         </div>
         <div class="auth-feature-item">
           <span class="material-icons-round" style="color: #10b981;">cloud_sync</span>
@@ -101,13 +159,13 @@
 
   <main id="mainContainer" class="container hidden">
 
-    <!-- Screen Tabs Navigation -->
+    <!-- Screen Tabs Navigation (Electricity, Water, Rates, History) -->
     <div class="type-selector">
-      <button class="tab-btn active" data-type="WATER">
-        <span class="material-icons-round" style="color:#0284c7;">water_drop</span> Water
-      </button>
-      <button class="tab-btn" data-type="ELECTRICITY">
+      <button class="tab-btn active" data-type="ELECTRICITY">
         <span class="material-icons-round" style="color:#f59e0b;">bolt</span> Electricity
+      </button>
+      <button class="tab-btn" data-type="WATER">
+        <span class="material-icons-round" style="color:#0284c7;">water_drop</span> Water
       </button>
       <button class="tab-btn" data-type="RATES">
         <span class="material-icons-round" style="color:#a855f7;">tune</span> Rates
@@ -117,65 +175,19 @@
       </button>
     </div>
 
-    <!-- Water Form Screen -->
-    <div id="sectionWater" class="tab-section">
-      <div class="card">
-        <div class="card-title">💧 Water Reading Entry</div>
-        
-        <div class="grid-2">
-          <div class="form-group">
-            <label class="form-label">Previous Reading (m³)</label>
-            <input type="text" id="waterPrevInput" class="form-input" inputmode="numeric" placeholder="0.000">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Current Reading (m³)</label>
-            <input type="text" id="waterCurrInput" class="form-input" inputmode="numeric" placeholder="e.g. 1234.567">
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Start of Cycle Date</label>
-          <input type="date" id="waterCycleStartInput" class="form-input">
-        </div>
-
-        <div class="estimate-box">
-          <div class="estimate-row">
-            <span>Active Provider:</span>
-            <strong id="activeWaterProviderLabel">PUB Water (Tiered)</strong>
-          </div>
-          <div class="estimate-row">
-            <span>Estimated Usage:</span>
-            <strong id="waterUsageEst">0.0 m³</strong>
-          </div>
-          <div class="estimate-row">
-            <span>Water Tariff & Taxes:</span>
-            <strong id="waterTaxEst">$0.00</strong>
-          </div>
-          <div class="estimate-row total">
-            <span>Est. Total Bill:</span>
-            <strong id="waterTotalEst">$0.00</strong>
-          </div>
-        </div>
-
-        <button class="btn-submit" id="btnSaveWater">
-          <span class="material-icons-round">save</span> Save Water Reading
-        </button>
-      </div>
-    </div>
-
     <!-- Electricity Form Screen -->
-    <div id="sectionElectricity" class="tab-section hidden">
+    <div id="sectionElectricity" class="tab-section">
       <div class="card">
         <div class="card-title">⚡ Electricity Reading Entry</div>
         
         <div class="grid-2">
           <div class="form-group">
             <label class="form-label">Previous Reading (kWh)</label>
-            <input type="text" id="elecPrevInput" class="form-input" inputmode="decimal" placeholder="0.0">
+            <input type="number" id="elecPrevInput" class="form-input" inputmode="numeric" pattern="[0-9]*" step="1" placeholder="1234">
           </div>
           <div class="form-group">
             <label class="form-label">Current Reading (kWh)</label>
-            <input type="text" id="elecCurrInput" class="form-input" inputmode="decimal" placeholder="e.g. 1423.6">
+            <input type="number" id="elecCurrInput" class="form-input" inputmode="numeric" pattern="[0-9]*" step="1" placeholder="e.g. 1423">
           </div>
         </div>
 
@@ -195,7 +207,7 @@
           </div>
           <div class="estimate-row">
             <span>Estimated Usage:</span>
-            <strong id="elecUsageEst">0.0 kWh</strong>
+            <strong id="elecUsageEst">0 kWh</strong>
           </div>
           <div class="estimate-row total">
             <span>Est. Total Bill:</span>
@@ -205,6 +217,52 @@
 
         <button class="btn-submit" id="btnSaveElectricity">
           <span class="material-icons-round">save</span> Save Electricity Reading
+        </button>
+      </div>
+    </div>
+
+    <!-- Water Form Screen -->
+    <div id="sectionWater" class="tab-section hidden">
+      <div class="card">
+        <div class="card-title">💧 Water Reading Entry</div>
+        
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Previous Reading (m³)</label>
+            <input type="number" id="waterPrevInput" class="form-input" inputmode="decimal" step="0.001" placeholder="0.000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Current Reading (m³)</label>
+            <input type="number" id="waterCurrInput" class="form-input" inputmode="decimal" step="0.001" placeholder="e.g. 1234.567">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Start of Cycle Date</label>
+          <input type="date" id="waterCycleStartInput" class="form-input">
+        </div>
+
+        <div class="estimate-box">
+          <div class="estimate-row">
+            <span>Active Provider:</span>
+            <strong id="activeWaterProviderLabel">PUB Water (Tiered)</strong>
+          </div>
+          <div class="estimate-row">
+            <span>Estimated Usage:</span>
+            <strong id="waterUsageEst">0.000 m³</strong>
+          </div>
+          <div class="estimate-row">
+            <span>Water Tariff & Taxes:</span>
+            <strong id="waterTaxEst">$0.00</strong>
+          </div>
+          <div class="estimate-row total">
+            <span>Est. Total Bill:</span>
+            <strong id="waterTotalEst">$0.00</strong>
+          </div>
+        </div>
+
+        <button class="btn-submit" id="btnSaveWater">
+          <span class="material-icons-round">save</span> Save Water Reading
         </button>
       </div>
     </div>
