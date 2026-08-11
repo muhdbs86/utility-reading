@@ -52,6 +52,23 @@ input[type=number] {
   appearance: textfield;
 }
 
+/* Fix mobile date input display & width overflow */
+input[type="date"].form-input {
+  max-width: 100% !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
+  display: block !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  min-height: 42px !important;
+  padding: 8px 10px !important;
+  background: #0f172a !important;
+  color: white !important;
+  border: 1px solid var(--card-border) !important;
+  border-radius: 8px !important;
+}
+
 /* Prevent auto zoom-in on all mobile inputs */
 input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   font-size: 16px !important;
