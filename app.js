@@ -3,10 +3,19 @@ let auth = null;
 let currentUser = null;
 let userReadings = [];
 
-// Register Service Worker for Android PWA Installability
+// Register Service Worker (with Blob Fallback for GitHub Pages)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(err => console.warn('Service Worker registration:', err));
+    navigator.serviceWorker.register('sw.js').catch(() => {
+      const swCode = `
+        self.addEventListener('install', e => self.skipWaiting());
+        self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+        self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));
+      `;
+      const blob = new Blob([swCode], { type: 'application/javascript' });
+      const swUrl = URL.createObjectURL(blob);
+      navigator.serviceWorker.register(swUrl).catch(err => console.warn('SW:', err));
+    });
   });
 }
 
@@ -238,7 +247,7 @@ formatWaterInputAutoDecimal(document.getElementById('waterCurrInput'));
 formatElecInputWholeNumber(document.getElementById('elecPrevInput'));
 formatElecInputWholeNumber(document.getElementById('elecCurrInput'));
 
-// Auto-fill Previous Reading from User History
+// Auto-fill Previous & Current Readings
 function autofillLatestReadings() {
   const waterPrevInput = document.getElementById('waterPrevInput');
   const waterCurrInput = document.getElementById('waterCurrInput');

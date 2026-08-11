@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utility-calc-v1';
+const CACHE_NAME = 'utility-calc-v2';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
