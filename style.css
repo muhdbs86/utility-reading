@@ -13,7 +13,7 @@
 }
 
 * {
-  box-sizing: border-box;
+  box-sizing: border-box !important;
   margin: 0;
   padding: 0;
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -28,7 +28,7 @@ html, body {
   height: 100%;
   height: 100dvh;
   max-height: 100dvh;
-  overflow: hidden !important; /* Disables outer body scrolling */
+  overflow: hidden !important;
   padding: 0;
   margin: 0;
   font-size: 0.85rem;
@@ -52,27 +52,40 @@ input[type=number] {
   appearance: textfield;
 }
 
-/* Fix mobile date input display & width overflow */
-input[type="date"].form-input {
-  max-width: 100% !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-  text-align: center !important;
-  display: block !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  min-height: 42px !important;
-  padding: 8px 10px !important;
-  background: #ffffff !important;
-  color: var(--text-main) !important;
-  border: 1px solid var(--card-border) !important;
-  border-radius: 8px !important;
-}
-
-/* Prevent auto zoom-in on all mobile inputs */
+/* Universal Inputs: Prevent mobile auto-zoom and constrain widths */
 input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   font-size: 16px !important;
+  box-sizing: border-box !important;
+  max-width: 100% !important;
   touch-action: manipulation !important;
+}
+
+/* Fix iOS WebKit Date Input Overflow Across All Forms & Modals */
+input[type="date"],
+input[type="date"].form-input,
+input[type="date"].modal-input {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  display: block !important;
+  margin: 0 !important;
+  padding: 9px 12px !important;
+  background: #f8fafc !important;
+  color: var(--text-main) !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  min-height: 42px !important;
+  line-height: normal !important;
+}
+
+/* Align date text to match other form fields on iOS */
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
 }
 
 .material-icons-round {
@@ -87,7 +100,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   -webkit-backdrop-filter: blur(12px);
   position: relative;
   z-index: 50;
-  padding-top: max(16px, env(safe-area-inset-top)); /* Safe top clearance */
+  padding-top: max(16px, env(safe-area-inset-top));
   padding-bottom: 12px;
   padding-left: max(14px, env(safe-area-inset-left));
   padding-right: max(14px, env(safe-area-inset-right));
@@ -377,7 +390,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   display: none !important;
 }
 
-/* Modal Overlay - Positioned safely below iOS Status Bar & Blur Zone */
+/* Modal Overlay - Positioned safely below iOS Status Bar */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -389,13 +402,13 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   -webkit-backdrop-filter: blur(8px);
   z-index: 100;
   display: flex;
-  align-items: flex-start; /* Align from top with generous padding */
+  align-items: flex-start;
   justify-content: center;
   padding: max(48px, env(safe-area-inset-top) + 24px) 16px 16px 16px;
   overflow-y: auto;
 }
 
-/* History Screen Cards & Breakdown Modal */
+/* History Screen Cards */
 .current-cycle-card {
   background: #ffffff;
   color: var(--text-main);
@@ -469,7 +482,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   background: #f1f5f9;
 }
 
-/* Modal Detailed Breakdown Card - Clears iOS Faded Header Area */
+/* Modal Detailed Breakdown Card */
 .modal-breakdown-card {
   background: #ffffff;
   color: var(--text-main);
@@ -502,14 +515,14 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   background: #f1f5f9;
 }
 
-/* Configure Provider Modal & Card Styling */
+/* Configure Provider & Edit Reading Modal Styling */
 .modal-provider-card {
   background: #ffffff;
   color: var(--text-main);
   border-radius: 20px;
   padding: 18px;
   width: 100%;
-  max-width: 420px;
+  max-width: 400px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   border: 1px solid var(--card-border);
   max-height: calc(100dvh - env(safe-area-inset-top) - 60px);
@@ -534,7 +547,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
 }
 
 .modal-input {
-  width: 100%;
+  width: 100% !important;
   background: #f8fafc;
   border: 1px solid #cbd5e1;
   border-radius: 10px;
@@ -543,7 +556,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   font-size: 16px !important;
   font-weight: 600;
   outline: none;
-  box-sizing: border-box;
+  box-sizing: border-box !important;
 }
 
 .modal-input:focus {
@@ -696,32 +709,6 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   color: #334155;
 }
 
-.btn-reorder {
-  background: #f1f5f9;
-  border: 1px solid #cbd5e1;
-  color: #0f172a;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  padding: 0;
-  touch-action: manipulation !important;
-}
-
-.btn-reorder:hover:not([disabled]) {
-  background: #e2e8f0;
-  border-color: #94a3b8;
-}
-
-.btn-reorder[disabled] {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
 .btn-icon-action {
   background: transparent;
   border: none;
@@ -754,7 +741,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   display: none !important;
 }
 
-/* Light Auth Landing Screen - Clean White / Slate Background */
+/* Light Auth Landing Screen */
 .auth-landing-container {
   position: fixed;
   inset: 0;
@@ -788,14 +775,6 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   background: linear-gradient(135deg, #38bdf8, #818cf8, #f59e0b);
   margin: 0 auto 20px auto;
   box-shadow: 0 8px 20px rgba(56, 189, 248, 0.25);
-}
-
-.auth-logo-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 19px;
-  display: block;
 }
 
 .auth-title {
