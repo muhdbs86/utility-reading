@@ -82,7 +82,6 @@ function getActiveProvider(type) {
     if (fallback) return fallback;
   }
   
-  // Default Zero Rates when user has no configured providers
   if (type === 'WATER') {
     return { name: 'No Provider Set', model: 'FLAT', flatRate: 0, t1Tariff: 0, t1Wct: 0, t1Wbf: 0, t2Tariff: 0, t2Wct: 0, t2Wbf: 0, gst: 0 };
   }
@@ -118,6 +117,14 @@ function formatDateDMY(dateMs) {
   return `${dd}/${mm}/${yyyy}`;
 }
 
+function formatDateYMD(dateMs) {
+  const dt = new Date(dateMs || Date.now());
+  const yyyy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 function getReadingCycleInfo(dateMs, cycleDay = 28) {
   const dt = new Date(dateMs || Date.now());
   let year = dt.getFullYear();
@@ -148,7 +155,68 @@ function getReadingCycleInfo(dateMs, cycleDay = 28) {
   return { monthName, year, month, rangeStr };
 }
 
-// Calculation Helpers
+// Calculation Utilities
+function calculateTotalForUsage(type, usage) {
+  const provider = getActiveProvider(type);
+  if (type === 'ELECTRICITY') {
+    const tariff = provider.tariff || 0;
+    const gst = provider.gst || 0;
+    return (usage * tariff) * (1 + (gst / 100));
+  } else if (type === 'WATER') {
+    let baseAmount = 0;
+    if (provider.model === 'FLAT') {
+      baseAmount = usage * (provider.flatRate || 0);
+    } else {
+      const t1Tariff = (provider.t1Tariff || 0) + (provider.t1Wct || 0) + (provider.t1Wbf || 0);
+      const t2Tariff = (provider.t2Tariff || 0) + (provider.t2Wct || 0) + (provider.t2Wbf || 0);
+      if (usage <= 40) {
+        baseAmount = usage * t1Tariff;
+      } else {
+        baseAmount = (40 * t1Tariff) + ((usage - 40) * t2Tariff);
+      }
+    }
+    const tax = baseAmount * ((provider.gst || 0) / 100);
+    return baseAmount + tax;
+  }
+  return 0;
+}
+
+// Auto-Rechain Previous Readings & Recalculate Bills (Chronological)
+function rechainAndRecalculateReadings(type) {
+  if (!type) return;
+
+  const items = userReadings
+    .filter(r => r.type === type)
+    .sort((a, b) => (a.readingDate || a.timestamp || 0) - (b.readingDate || b.timestamp || 0));
+
+  if (items.length === 0) return;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (i === 0) {
+      const prev = item.previousReading !== undefined ? item.previousReading : 0;
+      const curr = item.currentReading !== undefined ? item.currentReading : item.reading;
+      item.previousReading = (type === 'ELECTRICITY') ? Math.round(prev) : parseFloat(parseFloat(prev).toFixed(3));
+      item.currentReading = (type === 'ELECTRICITY') ? Math.round(curr) : parseFloat(parseFloat(curr).toFixed(3));
+      item.reading = item.currentReading;
+      item.usage = Math.max(0, item.currentReading - item.previousReading);
+      if (type === 'ELECTRICITY') item.usage = Math.round(item.usage);
+      else item.usage = parseFloat(item.usage.toFixed(3));
+      item.totalAmount = calculateTotalForUsage(type, item.usage);
+    } else {
+      const prevItem = items[i - 1];
+      item.previousReading = prevItem.currentReading;
+      const curr = item.currentReading !== undefined ? item.currentReading : item.reading;
+      item.currentReading = (type === 'ELECTRICITY') ? Math.round(curr) : parseFloat(parseFloat(curr).toFixed(3));
+      item.reading = item.currentReading;
+      item.usage = Math.max(0, item.currentReading - item.previousReading);
+      if (type === 'ELECTRICITY') item.usage = Math.round(item.usage);
+      else item.usage = parseFloat(item.usage.toFixed(3));
+      item.totalAmount = calculateTotalForUsage(type, item.usage);
+    }
+  }
+}
+
 function calculateWaterEst() {
   const prevInput = document.getElementById('waterPrevInput');
   const currInput = document.getElementById('waterCurrInput');
@@ -214,7 +282,7 @@ function formatWaterInputAutoDecimal(inputEl) {
   if (!inputEl) return;
   inputEl.addEventListener('input', () => {
     let raw = inputEl.value;
-    let digits = raw.replace(/\D/g, ''); // Extract numbers only
+    let digits = raw.replace(/\D/g, '');
     if (!digits || parseInt(digits, 10) === 0) {
       inputEl.value = '';
     } else {
@@ -230,7 +298,7 @@ function formatElecInputWholeNumber(inputEl) {
   if (!inputEl) return;
   inputEl.addEventListener('input', () => {
     let raw = inputEl.value;
-    let digits = raw.replace(/\D/g, ''); // Extract numbers only
+    let digits = raw.replace(/\D/g, '');
     if (!digits) {
       inputEl.value = '';
     } else {
@@ -241,7 +309,6 @@ function formatElecInputWholeNumber(inputEl) {
   });
 }
 
-// Bind Input Formatters
 formatWaterInputAutoDecimal(document.getElementById('waterPrevInput'));
 formatWaterInputAutoDecimal(document.getElementById('waterCurrInput'));
 formatElecInputWholeNumber(document.getElementById('elecPrevInput'));
@@ -280,7 +347,6 @@ function autofillLatestReadings() {
     elecVal = localStorage.getItem(`utility_last_elec_reading_${currentUser.uid}`) || '';
   }
 
-  // Populate Previous Readings (or set empty if no records)
   if (waterPrevInput) {
     waterPrevInput.value = (waterVal !== '' && waterVal !== null) ? parseFloat(waterVal).toFixed(3) : '';
   }
@@ -289,14 +355,8 @@ function autofillLatestReadings() {
     elecPrevInput.value = (elecVal !== '' && elecVal !== null) ? Math.round(parseFloat(elecVal) || 0).toString() : '';
   }
 
-  // Current Reading boxes are ALWAYS cleared to empty for new entry / when no records exist
-  if (waterCurrInput) {
-    waterCurrInput.value = '';
-  }
-
-  if (elecCurrInput) {
-    elecCurrInput.value = '';
-  }
+  if (waterCurrInput) waterCurrInput.value = '';
+  if (elecCurrInput) elecCurrInput.value = '';
 
   calculateWaterEst();
   calculateElecEst();
@@ -329,7 +389,7 @@ function updateRateLabels() {
   if (elecTariffLbl) elecTariffLbl.innerText = `$${(elecP.tariff || 0).toFixed(4)} / kWh`;
 }
 
-function renderProviderActionControls(p, idx, totalItems) {
+function renderProviderActionControls(p) {
   return `
     <div style="display:flex; gap:6px; align-items:center;">
       <button type="button" data-action="edit-provider" data-id="${p.id}" class="btn-icon-action" title="Edit Provider">
@@ -355,7 +415,7 @@ function saveProvidersState() {
   calculateElecEst();
 }
 
-// PROVIDERS & RATES RENDERER
+// Providers Renderer
 function renderProviders() {
   const refuseList = document.getElementById('refuseProvidersList');
   const elecList = document.getElementById('elecProvidersList');
@@ -371,14 +431,14 @@ function renderProviders() {
 
   refuseList.innerHTML = refuseItems.length === 0 
     ? `<p style="font-size:0.75rem; color:var(--text-muted); font-style:italic; padding:4px 0;">No refuse providers added.</p>`
-    : refuseItems.map((p, idx) => `
+    : refuseItems.map(p => `
     <div class="provider-card-ui">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
         <div style="display:flex; flex-direction:column; gap:2px;">
           <strong style="font-size:0.78rem; font-weight:700; color:#0f172a; line-height:1.2;">${p.name}</strong>
           ${p.isDefault ? '<div style="margin-top:2px;"><span class="badge-default">★ Default</span></div>' : ''}
         </div>
-        ${renderProviderActionControls(p, idx, refuseItems.length)}
+        ${renderProviderActionControls(p)}
       </div>
       <div style="background:#f8fafc; padding:8px 10px; border-radius:10px; font-size:0.76rem;">
         <div class="card-row-item"><span>Usage Fee</span><strong>S$${(p.fee || 0).toFixed(4)} / month</strong></div>
@@ -389,14 +449,14 @@ function renderProviders() {
 
   elecList.innerHTML = elecItems.length === 0 
     ? `<p style="font-size:0.75rem; color:var(--text-muted); font-style:italic; padding:4px 0;">No electricity providers added.</p>`
-    : elecItems.map((p, idx) => `
+    : elecItems.map(p => `
     <div class="provider-card-ui">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
         <div style="display:flex; flex-direction:column; gap:2px;">
           <strong style="font-size:0.78rem; font-weight:700; color:#0f172a; line-height:1.2;">${p.name}</strong>
           ${p.isDefault ? '<div style="margin-top:2px;"><span class="badge-default">★ Default</span></div>' : ''}
         </div>
-        ${renderProviderActionControls(p, idx, elecItems.length)}
+        ${renderProviderActionControls(p)}
       </div>
       <div style="background:#f8fafc; padding:8px 10px; border-radius:10px; font-size:0.76rem;">
         <div class="card-row-item"><span>Usage Fee</span><strong>S$${(p.tariff || 0).toFixed(4)} / kWh</strong></div>
@@ -407,7 +467,7 @@ function renderProviders() {
 
   waterList.innerHTML = waterItems.length === 0 
     ? `<p style="font-size:0.75rem; color:var(--text-muted); font-style:italic; padding:4px 0;">No water providers added.</p>`
-    : waterItems.map((p, idx) => {
+    : waterItems.map(p => {
     if (p.model === 'FLAT') {
       return `
         <div class="provider-card-ui">
@@ -416,7 +476,7 @@ function renderProviders() {
               <strong style="font-size:0.78rem; font-weight:700; color:#0f172a; line-height:1.2;">${p.name}</strong>
               ${p.isDefault ? '<div style="margin-top:2px;"><span class="badge-default">★ Default</span></div>' : ''}
             </div>
-            ${renderProviderActionControls(p, idx, waterItems.length)}
+            ${renderProviderActionControls(p)}
           </div>
           <div style="background:#f8fafc; padding:8px 10px; border-radius:10px; font-size:0.76rem;">
             <div class="card-row-item"><span>Rate Model</span><strong>Flat Rate</strong></div>
@@ -435,7 +495,7 @@ function renderProviders() {
             <strong style="font-size:0.78rem; font-weight:700; color:#0f172a; line-height:1.2;">${p.name}</strong>
             ${p.isDefault ? '<div style="margin-top:2px;"><span class="badge-default">★ Default</span></div>' : ''}
           </div>
-          ${renderProviderActionControls(p, idx, waterItems.length)}
+          ${renderProviderActionControls(p)}
         </div>
         <div style="background:#f8fafc; padding:8px 10px; border-radius:10px; font-size:0.76rem;">
           <div class="card-row-item"><span>Rate Model</span><strong>Standard Tiered</strong></div>
@@ -470,7 +530,7 @@ function renderProviders() {
   }).join('');
 }
 
-// Modal state
+// Modal State & Controls
 let editingProviderId = null;
 let selectedModalType = 'ELECTRICITY';
 let selectedModalWaterModel = 'FLAT';
@@ -711,7 +771,7 @@ if (btnWaterPlus) btnWaterPlus.addEventListener('click', () => {
   renderHistory();
 });
 
-// Tab Navigation (Electricity, Water, Rates, History)
+// Tab Navigation
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -759,7 +819,7 @@ async function syncCycleToFirebase() {
   }
 }
 
-// Save Reading & Sync
+// Save Readings
 const btnSaveW = document.getElementById('btnSaveWater');
 if (btnSaveW) btnSaveW.addEventListener('click', async () => {
   const waterPrevEl = document.getElementById('waterPrevInput');
@@ -836,6 +896,7 @@ if (btnSaveE) btnSaveE.addEventListener('click', async () => {
 
 async function saveAndSyncReading(item) {
   userReadings.push(item);
+  rechainAndRecalculateReadings(item.type);
   localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
   if (currentUser) {
     localStorage.setItem(`utility_readings_${currentUser.uid}`, JSON.stringify(userReadings));
@@ -846,10 +907,9 @@ async function saveAndSyncReading(item) {
   renderHistory();
 }
 
-// Modal state for Detailed Breakdown
+// Modal State & Handlers for Detailed Breakdown
 let activeBreakdownGroupKey = null;
 
-// RENDER HISTORY SCREEN
 function renderHistory() {
   const currentMonitorCard = document.getElementById('currentCycleMonitorCard');
   const historyList = document.getElementById('historyList');
@@ -901,7 +961,6 @@ function renderHistory() {
   const currWaterTotal = currGroup.water.reduce((s, x) => s + (x.totalAmount || 0), 0);
   const currCycleGrandTotal = currElecTotal + currWaterTotal + refuseFee;
 
-  // Fixed Top Current Cycle Monitor Banner HTML
   currentMonitorCard.innerHTML = `
     <div class="current-cycle-card" style="margin-bottom: 0;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -911,16 +970,16 @@ function renderHistory() {
 
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px; text-align:center;">
         <div class="cycle-metric-box">
-          <div style="color:#ef4444; font-size:0.75rem; font-weight:700;">⚡ Electricity</div>
-          <div style="font-size:0.95rem; font-weight:800; color:#ef4444; margin-top:2px;">S$${currElecTotal.toFixed(2)}</div>
+          <div style="color:#d97706; font-size:0.75rem; font-weight:700;">⚡ Electricity</div>
+          <div style="font-size:0.95rem; font-weight:800; color:#d97706; margin-top:2px;">S$${currElecTotal.toFixed(2)}</div>
         </div>
         <div class="cycle-metric-box">
           <div style="color:#0284c7; font-size:0.75rem; font-weight:700;">💧 Water</div>
           <div style="font-size:0.95rem; font-weight:800; color:#0284c7; margin-top:2px;">S$${currWaterTotal.toFixed(2)}</div>
         </div>
         <div class="cycle-metric-box">
-          <div style="color:#64748b; font-size:0.75rem; font-weight:700;">🗑️ Refuse</div>
-          <div style="font-size:0.95rem; font-weight:800; color:#64748b; margin-top:2px;">S$${refuseFee.toFixed(2)}</div>
+          <div style="color:#475569; font-size:0.75rem; font-weight:700;">🗑️ Refuse</div>
+          <div style="font-size:0.95rem; font-weight:800; color:#475569; margin-top:2px;">S$${refuseFee.toFixed(2)}</div>
         </div>
       </div>
 
@@ -931,17 +990,15 @@ function renderHistory() {
     </div>
   `;
 
-  // Sort billing cycles descending and limit to 1 year (most recent 12 cycle periods)
   const sortedKeys = Object.keys(cycleGroups).sort((a, b) => {
     return (cycleGroups[b].year * 12 + cycleGroups[b].month) - (cycleGroups[a].year * 12 + cycleGroups[a].month);
   });
 
-  const yearKeys = sortedKeys.slice(0, 12); // Keep max 1 year (12 months) of records
+  const yearKeys = sortedKeys.slice(0, 12);
 
   let html = `
-    <!-- Past Calculations History Header -->
     <div style="display:flex; justify-content:space-between; align-items:center; margin:12px 0 10px 0;">
-      <h3 style="font-size:0.92rem; font-weight:800; color:#f8fafc;">Past Calculations History (1 Year)</h3>
+      <h3 style="font-size:0.92rem; font-weight:800; color:#0f172a;">Past Calculations History (1 Year)</h3>
       <span class="badge-cycle-info">Grouped: Cycle (⚡ ${elecCycleStartDay}th | 💧 ${waterCycleStartDay}th)</span>
     </div>
   `;
@@ -976,15 +1033,13 @@ function renderHistory() {
           </div>
 
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
-            <!-- Electricity Sub Card -->
             <div class="history-subcard-elec">
-              <div style="font-weight:700; font-size:0.76rem; color:#dc2626; display:flex; align-items:center; gap:4px;">⚡ Electricity</div>
-              <div style="font-weight:800; font-size:0.92rem; color:#dc2626; margin:4px 0 2px 0;">S$${elecTotal.toFixed(4)}</div>
+              <div style="font-weight:700; font-size:0.76rem; color:#d97706; display:flex; align-items:center; gap:4px;">⚡ Electricity</div>
+              <div style="font-weight:800; font-size:0.92rem; color:#d97706; margin:4px 0 2px 0;">S$${elecTotal.toFixed(4)}</div>
               <div style="font-size:0.72rem; color:#0f172a; font-weight:700;">${Math.round(elecUsage)} kWh</div>
               <div style="font-size:0.68rem; color:#94a3b8; margin-top:2px;">${g.elec.length} entries</div>
             </div>
 
-            <!-- Water Sub Card -->
             <div class="history-subcard-water">
               <div style="font-weight:700; font-size:0.76rem; color:#0284c7; display:flex; align-items:center; gap:4px;">💧 Water</div>
               <div style="font-weight:800; font-size:0.92rem; color:#0284c7; margin:4px 0 2px 0;">S$${waterTotal.toFixed(4)}</div>
@@ -1012,7 +1067,6 @@ function renderHistory() {
   autofillLatestReadings();
 }
 
-// Open Detailed Breakdown Modal
 window.openBreakdownModal = function(groupKey) {
   activeBreakdownGroupKey = groupKey;
   renderBreakdownModalContent();
@@ -1032,7 +1086,6 @@ function renderBreakdownModalContent() {
     return cycleInfo.monthName === activeBreakdownGroupKey;
   });
 
-  // Sort logs descending (Latest record first)
   const elecItems = items
     .filter(x => x.type === 'ELECTRICITY')
     .sort((a, b) => (b.readingDate || b.timestamp || 0) - (a.readingDate || a.timestamp || 0));
@@ -1047,7 +1100,6 @@ function renderBreakdownModalContent() {
   const waterUsage = waterItems.reduce((s, x) => s + (x.usage || 0), 0);
 
   const grandTotal = elecTotal + waterTotal + refuseFee;
-
   const cycleInfo = getReadingCycleInfo(Date.now(), waterCycleStartDay);
 
   const titleEl = document.getElementById('breakdownTitle');
@@ -1061,7 +1113,7 @@ function renderBreakdownModalContent() {
 
   container.innerHTML = `
     <!-- Combined Grand Total Banner -->
-    <div style="background:#ffffff; border-radius:16px; padding:14px 16px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+    <div style="background:#ffffff; border-radius:16px; padding:14px 16px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; border:1px solid #e2e8f0; box-shadow:0 2px 8px rgba(0,0,0,0.04);">
       <div>
         <span style="font-size:0.72rem; color:#64748b; font-weight:700; display:block;">Combined Grand Total</span>
         <strong style="font-size:1.35rem; font-weight:800; color:#0f172a;">S$${grandTotal.toFixed(2)}</strong>
@@ -1071,39 +1123,52 @@ function renderBreakdownModalContent() {
 
     <!-- Electricity Details Card -->
     <div style="margin-bottom:14px;">
-      <div style="font-size:0.82rem; font-weight:800; color:#ef4444; margin-bottom:6px; display:flex; align-items:center; gap:4px;">
+      <div style="font-size:0.82rem; font-weight:800; color:#d97706; margin-bottom:6px; display:flex; align-items:center; gap:4px;">
         ⚡ Electricity Details
       </div>
-      <div style="background:#ffffff; border-radius:16px; padding:12px 14px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+      <div style="background:#ffffff; border-radius:16px; padding:12px 14px; border:1px solid #e2e8f0; box-shadow:0 2px 8px rgba(0,0,0,0.04);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <div style="background:#fef2f2; color:#ef4444; width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:800;">⚡</div>
+            <div style="background:#fef2f2; color:#d97706; width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:800;">⚡</div>
             <div>
-              <strong style="font-size:0.82rem; font-weight:800; color:#ef4444; display:block;">Electricity Compiled</strong>
+              <strong style="font-size:0.82rem; font-weight:800; color:#d97706; display:block;">Electricity Compiled</strong>
               <span style="font-size:0.68rem; color:#64748b; font-weight:600;">${cycleInfo.rangeStr}</span>
             </div>
           </div>
-          <span style="background:#fef2f2; color:#ef4444; font-size:0.68rem; font-weight:800; padding:3px 8px; border-radius:10px;">${elecItems.length} entries</span>
+          <span style="background:#fef2f2; color:#d97706; font-size:0.68rem; font-weight:800; padding:3px 8px; border-radius:10px;">${elecItems.length} entries</span>
         </div>
 
-        <div style="display:flex; justify-content:space-between; font-size:0.74rem; color:#64748b; padding:6px 0; border-top:1px solid #f1f5f9;">
-          <span>Providers: <strong style="color:#0f172a;">${elecItems[0]?.providerName || activeElecP.name}</strong></span>
-          <span>Total Usage: <strong style="color:#0f172a;">${Math.round(elecUsage)} kWh</strong></span>
-          <span>Est. Bill: <strong style="color:#ef4444;">S$${elecTotal.toFixed(4)}</strong></span>
+        <!-- Single Line Provider & Two-Tier Summary (Request #3) -->
+        <div style="padding:8px 0; border-top:1px solid #f1f5f9; font-size:0.75rem;">
+          <div style="margin-bottom:4px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            Providers: <strong style="color:#0f172a;">${elecItems[0]?.providerName || activeElecP.name}</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; color:#64748b;">
+            <span>Total Usage: <strong style="color:#0f172a;">${Math.round(elecUsage)} kWh</strong></span>
+            <span>Est. Bill: <strong style="color:#d97706;">S$${elecTotal.toFixed(4)}</strong></span>
+          </div>
         </div>
 
-        <!-- Logs Breakdown (Latest record first) -->
-        <div style="margin-top:8px; border-top:1px dashed #e2e8f0; padding-top:6px;">
+        <div style="font-size:0.68rem; color:#94a3b8; font-style:italic; margin:4px 0 2px 0;">
+          💡 Double-tap any entry to edit date or reading.
+        </div>
+
+        <!-- Logs Breakdown (Double-Tap to Edit) -->
+        <div style="margin-top:6px; border-top:1px dashed #e2e8f0; padding-top:4px;">
           ${elecItems.length === 0 ? '<p style="font-size:0.72rem; color:#94a3b8; font-style:italic;">No electricity entries.</p>' : elecItems.map(item => `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:0.74rem;">
+            <div class="log-row-item" 
+                 data-item-id="${item.id}"
+                 onclick="window.handleRowTap('${item.id}')" 
+                 ondblclick="window.openEditReadingModal('${item.id}')"
+                 title="Double tap to edit">
               <div>
                 <span style="color:#0f172a; font-weight:700;">${formatDateDMY(item.readingDate || item.timestamp)}</span>
                 <span style="color:#64748b; margin-left:6px;">(${Math.round(item.previousReading)} ➔ ${Math.round(item.currentReading)})</span>
               </div>
               <div style="display:flex; align-items:center; gap:8px;">
-                <strong style="color:#ef4444;">S$${(item.totalAmount || 0).toFixed(2)}</strong>
-                <button type="button" onclick="window.deleteReadingItem('${item.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:2px;">
-                  <span class="material-icons-round" style="pointer-events:none; font-size:16px;">delete</span>
+                <strong style="color:#d97706;">S$${(item.totalAmount || 0).toFixed(2)}</strong>
+                <button type="button" onclick="event.stopPropagation(); window.deleteReadingItem('${item.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:2px;">
+                  <span class="material-icons-round" style="pointer-events:none; font-size:18px;">delete</span>
                 </button>
               </div>
             </div>
@@ -1117,7 +1182,7 @@ function renderBreakdownModalContent() {
       <div style="font-size:0.82rem; font-weight:800; color:#0284c7; margin-bottom:6px; display:flex; align-items:center; gap:4px;">
         💧 Water Details
       </div>
-      <div style="background:#ffffff; border-radius:16px; padding:12px 14px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+      <div style="background:#ffffff; border-radius:16px; padding:12px 14px; border:1px solid #e2e8f0; box-shadow:0 2px 8px rgba(0,0,0,0.04);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
           <div style="display:flex; align-items:center; gap:8px;">
             <div style="background:#f0f9ff; color:#0284c7; width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:800;">💧</div>
@@ -1129,24 +1194,37 @@ function renderBreakdownModalContent() {
           <span style="background:#f0f9ff; color:#0284c7; font-size:0.68rem; font-weight:800; padding:3px 8px; border-radius:10px;">${waterItems.length} entries</span>
         </div>
 
-        <div style="display:flex; justify-content:space-between; font-size:0.74rem; color:#64748b; padding:6px 0; border-top:1px solid #f1f5f9;">
-          <span>Providers: <strong style="color:#0f172a;">${waterItems[0]?.providerName || activeWaterP.name}</strong></span>
-          <span>Total Usage: <strong style="color:#0f172a;">${waterUsage.toFixed(3)} m³</strong></span>
-          <span>Est. Bill: <strong style="color:#0284c7;">S$${waterTotal.toFixed(4)}</strong></span>
+        <!-- Single Line Provider & Two-Tier Summary (Request #3) -->
+        <div style="padding:8px 0; border-top:1px solid #f1f5f9; font-size:0.75rem;">
+          <div style="margin-bottom:4px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            Providers: <strong style="color:#0f172a;">${waterItems[0]?.providerName || activeWaterP.name}</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; color:#64748b;">
+            <span>Total Usage: <strong style="color:#0f172a;">${waterUsage.toFixed(3)} m³</strong></span>
+            <span>Est. Bill: <strong style="color:#0284c7;">S$${waterTotal.toFixed(4)}</strong></span>
+          </div>
         </div>
 
-        <!-- Logs Breakdown (Latest record first) -->
-        <div style="margin-top:8px; border-top:1px dashed #e2e8f0; padding-top:6px;">
+        <div style="font-size:0.68rem; color:#94a3b8; font-style:italic; margin:4px 0 2px 0;">
+          💡 Double-tap any entry to edit date or reading.
+        </div>
+
+        <!-- Logs Breakdown (Double-Tap to Edit) -->
+        <div style="margin-top:6px; border-top:1px dashed #e2e8f0; padding-top:4px;">
           ${waterItems.length === 0 ? '<p style="font-size:0.72rem; color:#94a3b8; font-style:italic;">No water entries.</p>' : waterItems.map(item => `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:0.74rem;">
+            <div class="log-row-item" 
+                 data-item-id="${item.id}"
+                 onclick="window.handleRowTap('${item.id}')" 
+                 ondblclick="window.openEditReadingModal('${item.id}')"
+                 title="Double tap to edit">
               <div>
                 <span style="color:#0f172a; font-weight:700;">${formatDateDMY(item.readingDate || item.timestamp)}</span>
                 <span style="color:#64748b; margin-left:6px;">(${parseFloat(item.previousReading || 0).toFixed(3)} ➔ ${parseFloat(item.currentReading || 0).toFixed(3)})</span>
               </div>
               <div style="display:flex; align-items:center; gap:8px;">
                 <strong style="color:#0284c7;">S$${(item.totalAmount || 0).toFixed(2)}</strong>
-                <button type="button" onclick="window.deleteReadingItem('${item.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:2px;">
-                  <span class="material-icons-round" style="pointer-events:none; font-size:16px;">delete</span>
+                <button type="button" onclick="event.stopPropagation(); window.deleteReadingItem('${item.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:2px;">
+                  <span class="material-icons-round" style="pointer-events:none; font-size:18px;">delete</span>
                 </button>
               </div>
             </div>
@@ -1160,7 +1238,7 @@ function renderBreakdownModalContent() {
       <div style="font-size:0.82rem; font-weight:800; color:#475569; margin-bottom:6px; display:flex; align-items:center; gap:4px;">
         🗑️ Refuse Collection Details
       </div>
-      <div style="background:#ffffff; border-radius:16px; padding:12px 14px; box-shadow:0 2px 8px rgba(0,0,0,0.1); display:flex; justify-content:space-between; align-items:center;">
+      <div style="background:#ffffff; border-radius:16px; padding:12px 14px; border:1px solid #e2e8f0; box-shadow:0 2px 8px rgba(0,0,0,0.04); display:flex; justify-content:space-between; align-items:center;">
         <div>
           <strong style="font-size:0.82rem; font-weight:800; color:#0f172a; display:block;">Monthly Flat Charge</strong>
           <span style="font-size:0.68rem; color:#64748b;">Calculated based on active refuse provider rates</span>
@@ -1171,9 +1249,129 @@ function renderBreakdownModalContent() {
   `;
 }
 
+// Mobile Double-Tap Handler
+let lastTapTimestamp = 0;
+let lastTappedId = null;
+window.handleRowTap = function(id) {
+  const now = Date.now();
+  if (lastTappedId === id && (now - lastTapTimestamp) < 400) {
+    window.openEditReadingModal(id);
+    lastTapTimestamp = 0;
+    lastTappedId = null;
+  } else {
+    lastTapTimestamp = now;
+    lastTappedId = id;
+  }
+};
+
+// Double-Tap Edit Reading Dialog State & Methods
+let editingReadingRecordId = null;
+
+window.openEditReadingModal = function(id) {
+  const item = userReadings.find(x => x.id === id);
+  if (!item) return;
+
+  editingReadingRecordId = id;
+
+  const dateInput = document.getElementById('editReadingDate');
+  const prevInput = document.getElementById('editReadingPrev');
+  const currInput = document.getElementById('editReadingCurr');
+  const prevLabel = document.getElementById('editReadingPrevLabel');
+  const currLabel = document.getElementById('editReadingCurrLabel');
+
+  const unit = item.type === 'ELECTRICITY' ? 'kWh' : 'm³';
+  if (prevLabel) prevLabel.innerText = `Previous Reading (${unit})`;
+  if (currLabel) currLabel.innerText = `Current Reading (${unit})`;
+
+  if (dateInput) {
+    dateInput.value = formatDateYMD(item.readingDate || item.timestamp);
+  }
+
+  if (prevInput) {
+    prevInput.value = item.type === 'ELECTRICITY' 
+      ? Math.round(item.previousReading || 0).toString() 
+      : parseFloat(item.previousReading || 0).toFixed(3);
+  }
+
+  if (currInput) {
+    currInput.value = item.type === 'ELECTRICITY' 
+      ? Math.round(item.currentReading || 0).toString() 
+      : parseFloat(item.currentReading || 0).toFixed(3);
+  }
+
+  const modal = document.getElementById('editReadingModal');
+  if (modal) modal.classList.remove('hidden');
+};
+
+window.closeEditReadingModal = function() {
+  editingReadingRecordId = null;
+  const modal = document.getElementById('editReadingModal');
+  if (modal) modal.classList.add('hidden');
+};
+
+const btnSaveEdited = document.getElementById('btnSaveEditedReading');
+if (btnSaveEdited) {
+  btnSaveEdited.addEventListener('click', async () => {
+    if (!editingReadingRecordId) return;
+
+    const item = userReadings.find(x => x.id === editingReadingRecordId);
+    if (!item) return;
+
+    const dateInput = document.getElementById('editReadingDate');
+    const currInput = document.getElementById('editReadingCurr');
+
+    const newDateStr = dateInput ? dateInput.value : '';
+    const newCurrVal = parseFloat(currInput ? currInput.value : 0) || 0;
+
+    if (newCurrVal <= 0) {
+      alert('Please enter a valid current reading.');
+      return;
+    }
+
+    if (newDateStr) {
+      const parts = newDateStr.split('-');
+      const parsedDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 12, 0, 0);
+      item.readingDate = parsedDate.getTime();
+      item.timestamp = parsedDate.getTime();
+      item.date = parsedDate.toISOString();
+    }
+
+    if (item.type === 'ELECTRICITY') {
+      item.currentReading = Math.round(newCurrVal);
+      item.reading = Math.round(newCurrVal);
+    } else {
+      item.currentReading = parseFloat(newCurrVal.toFixed(3));
+      item.reading = parseFloat(newCurrVal.toFixed(3));
+    }
+
+    // Auto-rechain and recompute
+    rechainAndRecalculateReadings(item.type);
+
+    localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
+    if (currentUser) {
+      localStorage.setItem(`utility_readings_${currentUser.uid}`, JSON.stringify(userReadings));
+    }
+
+    await syncReadingsToFirebase();
+    window.closeEditReadingModal();
+    renderHistory();
+    renderBreakdownModalContent();
+    autofillLatestReadings();
+  });
+}
+
+// Delete Reading Log with Automatic Recalculation & Rechaining (Request #2)
 window.deleteReadingItem = async function(id) {
   if (!confirm('Delete this reading entry?')) return;
+  const itemToDelete = userReadings.find(x => x.id === id);
+  const type = itemToDelete ? itemToDelete.type : null;
+
   userReadings = userReadings.filter(x => x.id !== id);
+
+  if (type) {
+    rechainAndRecalculateReadings(type);
+  }
+
   localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
   if (currentUser) {
     localStorage.setItem(`utility_readings_${currentUser.uid}`, JSON.stringify(userReadings));
@@ -1189,7 +1387,7 @@ window.closeBreakdownModal = function() {
   if (modal) modal.classList.add('hidden');
 };
 
-// Central Delegated Event Handler for Provider Actions
+// Delegated Provider Action Handlers
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
@@ -1221,7 +1419,6 @@ const defaultFirebaseConfig = {
   appId: "1:361617071162:web:9619065ad4e76407efa903"
 };
 
-// Firebase Init & Auth
 let activeConfig = defaultFirebaseConfig;
 try {
   const savedConfig = localStorage.getItem('firebase_web_config');
@@ -1233,11 +1430,6 @@ try {
   }
 } catch (e) {
   localStorage.removeItem('firebase_web_config');
-}
-
-const configTextarea = document.getElementById('firebaseConfigText');
-if (configTextarea) {
-  configTextarea.value = JSON.stringify(activeConfig, null, 2);
 }
 
 let readingsUnsub = null;
@@ -1270,7 +1462,7 @@ function initFirebase(cfg) {
         if (mainContainer) mainContainer.classList.remove('hidden');
 
         const userAvatar = document.getElementById('userAvatar');
-        if (userAvatar) userAvatar.src = user.photoURL || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="100" fill="%230f172a"/><path d="M220 120 C220 120 130 240 130 310 A90 90 0 0 0 310 310 C310 240 220 120 220 120 Z" fill="%2338bdf8"/><path d="M310 110 L215 250 L270 250 L190 400 L310 230 L255 230 Z" fill="%23f59e0b"/></svg>';
+        if (userAvatar) userAvatar.src = user.photoURL || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="100" fill="%23f1f5f9"/><path d="M220 120 C220 120 130 240 130 310 A90 90 0 0 0 310 310 C310 240 220 120 220 120 Z" fill="%230284c7"/><path d="M310 110 L215 250 L270 250 L190 400 L310 230 L255 230 Z" fill="%23f59e0b"/></svg>';
         
         const syncStatusBanner = document.getElementById('syncStatusBanner');
         if (syncStatusBanner) {
@@ -1302,7 +1494,6 @@ function initFirebase(cfg) {
             localStorage.setItem(`utility_providers_${user.uid}`, JSON.stringify(providersList));
             localStorage.setItem('utility_providers', JSON.stringify(providersList));
           } else {
-            // New user account: Keep providers list empty ($0.00 zero rates)
             providersList = [];
             localStorage.removeItem(`utility_providers_${user.uid}`);
           }
@@ -1363,7 +1554,6 @@ const performGoogleLogin = async () => {
 const btnMainLogin = document.getElementById('btnMainLogin');
 if (btnMainLogin) btnMainLogin.addEventListener('click', performGoogleLogin);
 
-// Global Logout Handler
 window.handleLogout = async function() {
   if (readingsUnsub) { try { readingsUnsub(); } catch(e){} readingsUnsub = null; }
   if (providersUnsub) { try { providersUnsub(); } catch(e){} providersUnsub = null; }
