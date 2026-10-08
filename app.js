@@ -2,6 +2,10 @@ let db = null;
 let auth = null;
 let currentUser = null;
 let userReadings = [];
+let providersList = [];
+
+let elecCycleStartDay = 28;
+let waterCycleStartDay = 28;
 
 // Register Service Worker (with Blob Fallback for GitHub Pages)
 if ('serviceWorker' in navigator) {
@@ -46,12 +50,6 @@ if (btnInstallPwa) {
 document.addEventListener('gesturestart', (e) => {
   e.preventDefault();
 });
-
-// Providers List State
-let providersList = JSON.parse(localStorage.getItem('utility_providers')) || [];
-
-let elecCycleStartDay = parseInt(localStorage.getItem('utility_elec_cycle_start_day'), 10) || 28;
-let waterCycleStartDay = parseInt(localStorage.getItem('utility_water_cycle_start_day'), 10) || 28;
 
 // Explicit Order Normalization
 function normalizeProviderOrders() {
@@ -187,7 +185,7 @@ function rechainAndRecalculateReadings(type) {
 
   const items = userReadings
     .filter(r => r.type === type)
-    .sort((a, b) => (a.readingDate || a.timestamp || 0) - (b.readingDate || b.timestamp || 0));
+    .sort((a, b) => (a.readingDate || a.timestamp || 0) - (a.readingDate || a.timestamp || 0));
 
   if (items.length === 0) return;
 
@@ -314,7 +312,7 @@ formatWaterInputAutoDecimal(document.getElementById('waterCurrInput'));
 formatElecInputWholeNumber(document.getElementById('elecPrevInput'));
 formatElecInputWholeNumber(document.getElementById('elecCurrInput'));
 
-// Auto-fill Previous & Current Readings
+// Auto-fill Previous & Current Readings Directly from Cloud Memory
 function autofillLatestReadings() {
   const waterPrevInput = document.getElementById('waterPrevInput');
   const waterCurrInput = document.getElementById('waterCurrInput');
@@ -342,9 +340,6 @@ function autofillLatestReadings() {
       const latest = elecReadings[0];
       elecVal = latest.currentReading !== undefined ? latest.currentReading : latest.reading;
     }
-  } else if (currentUser) {
-    waterVal = localStorage.getItem(`utility_last_water_reading_${currentUser.uid}`) || '';
-    elecVal = localStorage.getItem(`utility_last_elec_reading_${currentUser.uid}`) || '';
   }
 
   if (waterPrevInput) {
@@ -402,13 +397,9 @@ function renderProviderActionControls(p) {
   `;
 }
 
-function saveProvidersState() {
+async function saveProvidersState() {
   normalizeProviderOrders();
-  localStorage.setItem('utility_providers', JSON.stringify(providersList));
-  if (currentUser) {
-    localStorage.setItem(`utility_providers_${currentUser.uid}`, JSON.stringify(providersList));
-  }
-  syncProvidersToFirebase();
+  await syncProvidersToFirebase();
   renderProviders();
   updateRateLabels();
   calculateWaterEst();
@@ -667,7 +658,7 @@ if (btnWTiered) btnWTiered.addEventListener('click', () => {
 });
 
 const modalSave = document.getElementById('modalBtnSave');
-if (modalSave) modalSave.addEventListener('click', () => {
+if (modalSave) modalSave.addEventListener('click', async () => {
   const nameEl = document.getElementById('modalProviderName');
   const name = (nameEl ? nameEl.value.trim() : '') || 'Provider Name';
   const defEl = document.getElementById('modalIsDefault');
@@ -731,14 +722,13 @@ if (modalSave) modalSave.addEventListener('click', () => {
 
   const pModal = document.getElementById('providerModal');
   if (pModal) pModal.classList.add('hidden');
-  saveProvidersState();
+  await saveProvidersState();
 });
 
 // Cycle Day Steppers
 const btnElecMinus = document.getElementById('btnElecCycleMinus');
 if (btnElecMinus) btnElecMinus.addEventListener('click', () => {
   elecCycleStartDay = elecCycleStartDay <= 1 ? 31 : elecCycleStartDay - 1;
-  localStorage.setItem('utility_elec_cycle_start_day', elecCycleStartDay.toString());
   updateCycleLabels();
   syncCycleToFirebase();
   renderHistory();
@@ -747,7 +737,6 @@ if (btnElecMinus) btnElecMinus.addEventListener('click', () => {
 const btnElecPlus = document.getElementById('btnElecCyclePlus');
 if (btnElecPlus) btnElecPlus.addEventListener('click', () => {
   elecCycleStartDay = elecCycleStartDay >= 31 ? 1 : elecCycleStartDay + 1;
-  localStorage.setItem('utility_elec_cycle_start_day', elecCycleStartDay.toString());
   updateCycleLabels();
   syncCycleToFirebase();
   renderHistory();
@@ -756,7 +745,6 @@ if (btnElecPlus) btnElecPlus.addEventListener('click', () => {
 const btnWaterMinus = document.getElementById('btnWaterCycleMinus');
 if (btnWaterMinus) btnWaterMinus.addEventListener('click', () => {
   waterCycleStartDay = waterCycleStartDay <= 1 ? 31 : waterCycleStartDay - 1;
-  localStorage.setItem('utility_water_cycle_start_day', waterCycleStartDay.toString());
   updateCycleLabels();
   syncCycleToFirebase();
   renderHistory();
@@ -765,7 +753,6 @@ if (btnWaterMinus) btnWaterMinus.addEventListener('click', () => {
 const btnWaterPlus = document.getElementById('btnWaterCyclePlus');
 if (btnWaterPlus) btnWaterPlus.addEventListener('click', () => {
   waterCycleStartDay = waterCycleStartDay >= 31 ? 1 : waterCycleStartDay + 1;
-  localStorage.setItem('utility_water_cycle_start_day', waterCycleStartDay.toString());
   updateCycleLabels();
   syncCycleToFirebase();
   renderHistory();
@@ -788,13 +775,13 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-// Sync helpers
+// Firebase Cloud Sync Helpers (Single Source of Truth)
 async function syncReadingsToFirebase() {
   if (db && currentUser) {
     try {
       const { ref, set } = window.FirebaseSDK;
       await set(ref(db, `users/${currentUser.uid}/readings`), userReadings);
-    } catch(e) { console.error('Failed auto-syncing readings:', e); }
+    } catch(e) { console.error('Failed syncing readings to cloud:', e); }
   }
 }
 
@@ -803,7 +790,7 @@ async function syncProvidersToFirebase() {
     try {
       const { ref, set } = window.FirebaseSDK;
       await set(ref(db, `users/${currentUser.uid}/providers`), providersList);
-    } catch(e) { console.error('Failed auto-syncing providers:', e); }
+    } catch(e) { console.error('Failed syncing providers to cloud:', e); }
   }
 }
 
@@ -815,7 +802,7 @@ async function syncCycleToFirebase() {
         elecCycleStartDay,
         waterCycleStartDay
       });
-    } catch(e) { console.error('Failed auto-syncing cycle:', e); }
+    } catch(e) { console.error('Failed syncing cycles to cloud:', e); }
   }
 }
 
@@ -851,10 +838,8 @@ if (btnSaveW) btnSaveW.addEventListener('click', async () => {
 
   await saveAndSyncReading(item);
   if (waterPrevEl) waterPrevEl.value = curr.toFixed(3);
-  localStorage.setItem('utility_last_water_reading', curr.toFixed(3));
-  if (currentUser) localStorage.setItem(`utility_last_water_reading_${currentUser.uid}`, curr.toFixed(3));
   if (waterCurrEl) waterCurrEl.value = '';
-  alert('Water reading saved and synced!');
+  alert('Water reading saved to cloud!');
 });
 
 const btnSaveE = document.getElementById('btnSaveElectricity');
@@ -888,20 +873,13 @@ if (btnSaveE) btnSaveE.addEventListener('click', async () => {
 
   await saveAndSyncReading(item);
   if (elecPrevEl) elecPrevEl.value = curr.toString();
-  localStorage.setItem('utility_last_elec_reading', curr.toString());
-  if (currentUser) localStorage.setItem(`utility_last_elec_reading_${currentUser.uid}`, curr.toString());
   if (elecCurrEl) elecCurrEl.value = '';
-  alert('Electricity reading saved and synced!');
+  alert('Electricity reading saved to cloud!');
 });
 
 async function saveAndSyncReading(item) {
   userReadings.push(item);
   rechainAndRecalculateReadings(item.type);
-  localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
-  if (currentUser) {
-    localStorage.setItem(`utility_readings_${currentUser.uid}`, JSON.stringify(userReadings));
-  }
-
   await syncReadingsToFirebase();
   autofillLatestReadings();
   renderHistory();
@@ -1138,7 +1116,7 @@ function renderBreakdownModalContent() {
           <span style="background:#fef2f2; color:#d97706; font-size:0.68rem; font-weight:800; padding:3px 8px; border-radius:10px;">${elecItems.length} entries</span>
         </div>
 
-        <!-- Single Line Provider & Two-Tier Summary (Request #3) -->
+        <!-- Single Line Provider & Two-Tier Summary -->
         <div style="padding:8px 0; border-top:1px solid #f1f5f9; font-size:0.75rem;">
           <div style="margin-bottom:4px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
             Providers: <strong style="color:#0f172a;">${elecItems[0]?.providerName || activeElecP.name}</strong>
@@ -1194,7 +1172,7 @@ function renderBreakdownModalContent() {
           <span style="background:#f0f9ff; color:#0284c7; font-size:0.68rem; font-weight:800; padding:3px 8px; border-radius:10px;">${waterItems.length} entries</span>
         </div>
 
-        <!-- Single Line Provider & Two-Tier Summary (Request #3) -->
+        <!-- Single Line Provider & Two-Tier Summary -->
         <div style="padding:8px 0; border-top:1px solid #f1f5f9; font-size:0.75rem;">
           <div style="margin-bottom:4px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
             Providers: <strong style="color:#0f172a;">${waterItems[0]?.providerName || activeWaterP.name}</strong>
@@ -1344,14 +1322,7 @@ if (btnSaveEdited) {
       item.reading = parseFloat(newCurrVal.toFixed(3));
     }
 
-    // Auto-rechain and recompute
     rechainAndRecalculateReadings(item.type);
-
-    localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
-    if (currentUser) {
-      localStorage.setItem(`utility_readings_${currentUser.uid}`, JSON.stringify(userReadings));
-    }
-
     await syncReadingsToFirebase();
     window.closeEditReadingModal();
     renderHistory();
@@ -1360,7 +1331,7 @@ if (btnSaveEdited) {
   });
 }
 
-// Delete Reading Log with Automatic Recalculation & Rechaining (Request #2)
+// Delete Reading Log with Automatic Recalculation & Rechaining
 window.deleteReadingItem = async function(id) {
   if (!confirm('Delete this reading entry?')) return;
   const itemToDelete = userReadings.find(x => x.id === id);
@@ -1372,10 +1343,6 @@ window.deleteReadingItem = async function(id) {
     rechainAndRecalculateReadings(type);
   }
 
-  localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
-  if (currentUser) {
-    localStorage.setItem(`utility_readings_${currentUser.uid}`, JSON.stringify(userReadings));
-  }
   await syncReadingsToFirebase();
   renderHistory();
   renderBreakdownModalContent();
@@ -1419,24 +1386,11 @@ const defaultFirebaseConfig = {
   appId: "1:361617071162:web:9619065ad4e76407efa903"
 };
 
-let activeConfig = defaultFirebaseConfig;
-try {
-  const savedConfig = localStorage.getItem('firebase_web_config');
-  if (savedConfig) {
-    const parsed = JSON.parse(savedConfig);
-    if (parsed && parsed.apiKey) {
-      activeConfig = parsed;
-    }
-  }
-} catch (e) {
-  localStorage.removeItem('firebase_web_config');
-}
-
 let readingsUnsub = null;
 let providersUnsub = null;
 let cycleUnsub = null;
 
-initFirebase(activeConfig);
+initFirebase(defaultFirebaseConfig);
 
 function initFirebase(cfg) {
   try {
@@ -1466,36 +1420,32 @@ function initFirebase(cfg) {
         
         const syncStatusBanner = document.getElementById('syncStatusBanner');
         if (syncStatusBanner) {
-          syncStatusBanner.innerHTML = `<span style="color:#10b981; font-weight:700; display:flex; align-items:center; gap:6px;"><span class="material-icons-round" style="font-size:16px;">cloud_done</span> Real-Time Auto Sync Active (${user.email || user.displayName || 'Google Account'})</span>`;
+          syncStatusBanner.innerHTML = `<span style="color:#10b981; font-weight:700; display:flex; align-items:center; gap:6px;"><span class="material-icons-round" style="font-size:16px;">cloud_done</span> Cloud Database Active (${user.email || user.displayName || 'Google Account'})</span>`;
         }
 
+        // Live Cloud Listener for Readings
         const userReadingsRef = ref(db, `users/${user.uid}/readings`);
         if (readingsUnsub) readingsUnsub();
         readingsUnsub = onValue(userReadingsRef, (snapshot) => {
           if (snapshot.exists()) {
             const data = snapshot.val();
             userReadings = Array.isArray(data) ? data : Object.entries(data).map(([id, val]) => ({ id, ...val }));
-            localStorage.setItem(`utility_readings_${user.uid}`, JSON.stringify(userReadings));
-            localStorage.setItem('utility_readings_local', JSON.stringify(userReadings));
           } else {
             userReadings = [];
-            localStorage.removeItem(`utility_readings_${user.uid}`);
           }
           renderHistory();
           autofillLatestReadings();
         });
 
+        // Live Cloud Listener for Providers & Rates
         const userProvidersRef = ref(db, `users/${user.uid}/providers`);
         if (providersUnsub) providersUnsub();
         providersUnsub = onValue(userProvidersRef, (snapshot) => {
           if (snapshot.exists()) {
             const data = snapshot.val();
             providersList = Array.isArray(data) ? data : Object.values(data);
-            localStorage.setItem(`utility_providers_${user.uid}`, JSON.stringify(providersList));
-            localStorage.setItem('utility_providers', JSON.stringify(providersList));
           } else {
             providersList = [];
-            localStorage.removeItem(`utility_providers_${user.uid}`);
           }
           renderProviders();
           updateRateLabels();
@@ -1503,6 +1453,7 @@ function initFirebase(cfg) {
           calculateElecEst();
         });
 
+        // Live Cloud Listener for Billing Cycles
         const userCycleRef = ref(db, `users/${user.uid}/cycles`);
         if (cycleUnsub) cycleUnsub();
         cycleUnsub = onValue(userCycleRef, (snapshot) => {
@@ -1511,8 +1462,6 @@ function initFirebase(cfg) {
             if (cyclesData) {
               if (cyclesData.elecCycleStartDay) elecCycleStartDay = cyclesData.elecCycleStartDay;
               if (cyclesData.waterCycleStartDay) waterCycleStartDay = cyclesData.waterCycleStartDay;
-              localStorage.setItem('utility_elec_cycle_start_day', elecCycleStartDay.toString());
-              localStorage.setItem('utility_water_cycle_start_day', waterCycleStartDay.toString());
               updateCycleLabels();
             }
           } else {
