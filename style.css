@@ -80,17 +80,17 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   vertical-align: middle;
 }
 
-/* Light App Header */
+/* Light App Header - Clears Top Status Bar / Notch Area */
 .header {
-  background-color: rgba(255, 255, 255, 0.92);
+  background-color: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   position: relative;
   z-index: 50;
-  padding-top: max(12px, env(safe-area-inset-top));
+  padding-top: max(16px, env(safe-area-inset-top)); /* Safe top clearance */
   padding-bottom: 12px;
-  padding-left: max(12px, env(safe-area-inset-left));
-  padding-right: max(12px, env(safe-area-inset-right));
+  padding-left: max(14px, env(safe-area-inset-left));
+  padding-right: max(14px, env(safe-area-inset-right));
   border-bottom: 1px solid var(--card-border);
   display: flex;
   justify-content: space-between;
@@ -147,7 +147,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   max-width: 480px;
   margin: 0 auto;
   padding: 10px 10px 0 10px;
-  height: calc(100dvh - 58px - env(safe-area-inset-top));
+  height: calc(100dvh - 60px - env(safe-area-inset-top));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -377,6 +377,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   display: none !important;
 }
 
+/* Modal Overlay - Positioned safely below iOS Status Bar & Blur Zone */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -384,13 +385,14 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   right: 0;
   bottom: 0;
   background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 100;
   display: flex;
-  align-items: center;
+  align-items: flex-start; /* Align from top with generous padding */
   justify-content: center;
-  padding: 16px;
+  padding: max(48px, env(safe-area-inset-top) + 24px) 16px 16px 16px;
+  overflow-y: auto;
 }
 
 /* History Screen Cards & Breakdown Modal */
@@ -467,7 +469,7 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   background: #f1f5f9;
 }
 
-/* Modal Detailed Breakdown Card */
+/* Modal Detailed Breakdown Card - Clears iOS Faded Header Area */
 .modal-breakdown-card {
   background: #ffffff;
   color: var(--text-main);
@@ -475,10 +477,29 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   padding: 18px;
   width: 100%;
   max-width: 440px;
-  max-height: 90vh;
+  max-height: calc(100dvh - env(safe-area-inset-top) - 60px);
   overflow-y: auto;
   box-shadow: 0 10px 30px rgba(0,0,0,0.15);
   border: 1px solid var(--card-border);
+  margin-top: 6px;
+}
+
+/* Double-Tap Edit Record Item Hover/Active Styling */
+.log-row-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  margin: 2px 0;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  user-select: none;
+  transition: background 0.15s ease;
+  cursor: pointer;
+}
+
+.log-row-item:active {
+  background: #f1f5f9;
 }
 
 /* Configure Provider Modal & Card Styling */
@@ -491,8 +512,9 @@ input, select, textarea, .form-input, .modal-input, .modal-input-sm {
   max-width: 420px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   border: 1px solid var(--card-border);
-  max-height: 90vh;
+  max-height: calc(100dvh - env(safe-area-inset-top) - 60px);
   overflow-y: auto;
+  margin-top: 6px;
 }
 
 .modal-label {
