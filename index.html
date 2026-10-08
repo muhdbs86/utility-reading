@@ -387,28 +387,36 @@
     </div>
   </div>
 
-  <!-- Reorder Providers Overlay Modal -->
-  <div id="reorderModal" class="modal-overlay hidden">
-    <div class="modal-provider-card" style="max-width: 440px;">
+  <!-- Edit Individual Reading Entry Modal (Triggered by Double-Tap) -->
+  <div id="editReadingModal" class="modal-overlay hidden">
+    <div class="modal-provider-card" style="max-width: 380px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 14px;">
-        <h3 style="font-size: 1.15rem; font-weight: 800; color: #0f172a; display:flex; align-items:center; gap:6px;">
-          <span class="material-icons-round" style="color:#2563eb;">swap_vert</span> Reorder Providers
+        <h3 style="font-size: 1.1rem; font-weight: 800; color: #0f172a; display:flex; align-items:center; gap:6px;">
+          <span class="material-icons-round" style="color:var(--primary);">edit</span> Edit Reading Log
         </h3>
-        <button type="button" onclick="window.closeReorderModal()" style="background:none; border:none; color:#64748b; cursor:pointer;">
+        <button type="button" onclick="window.closeEditReadingModal()" style="background:none; border:none; color:#64748b; cursor:pointer;">
           <span class="material-icons-round" style="font-size:22px;">close</span>
         </button>
       </div>
 
-      <p style="font-size:0.75rem; color:#64748b; margin-bottom:14px; font-weight:600;">
-        Use the up and down arrows to rearrange your providers list. The top provider in each category becomes the active rate calculation default.
-      </p>
+      <div style="margin-bottom: 12px;">
+        <label class="modal-label">Reading Date</label>
+        <input type="date" id="editReadingDate" class="modal-input">
+      </div>
 
-      <div id="reorderModalContent"></div>
+      <div style="margin-bottom: 12px;">
+        <label class="modal-label" id="editReadingPrevLabel">Previous Reading</label>
+        <input type="text" id="editReadingPrev" class="modal-input" disabled style="background:#f1f5f9; color:#64748b; cursor:not-allowed;">
+      </div>
 
-      <div style="display: flex; gap: 10px; margin-top: 16px;">
-        <button type="button" onclick="window.closeReorderModal()" class="modal-btn-save" style="width:100%;">
-          Done
-        </button>
+      <div style="margin-bottom: 16px;">
+        <label class="modal-label" id="editReadingCurrLabel">Current Reading</label>
+        <input type="text" id="editReadingCurr" class="modal-input" inputmode="numeric">
+      </div>
+
+      <div style="display: flex; gap: 10px;">
+        <button type="button" onclick="window.closeEditReadingModal()" class="modal-btn-cancel">Cancel</button>
+        <button type="button" id="btnSaveEditedReading" class="modal-btn-save">Save Changes</button>
       </div>
     </div>
   </div>
